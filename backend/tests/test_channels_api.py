@@ -1,23 +1,28 @@
 from __future__ import annotations
 
-from unittest.mock import ANY
-
 from fastapi.testclient import TestClient
 
 
-def test_create_channel_empty_body_returns_422(client: TestClient) -> None:
+def test_create_channel_empty_body_returns_400(client: TestClient) -> None:
     response = client.post("/channels", json={})
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert "channel_id or handle" in response.json()["detail"]
 
 
-def test_create_channel_missing_fields_returns_422(client: TestClient) -> None:
+def test_create_channel_missing_fields_returns_400(client: TestClient) -> None:
     response = client.post("/channels", json={"handle": None, "channel_id": None})
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert "channel_id or handle" in response.json()["detail"]
 
 
 def test_create_channel_invalid_type_returns_422(client: TestClient) -> None:
     response = client.post("/channels", json={"channel_id": 123})
     assert response.status_code == 422
+
+
+def test_create_channel_handle_only_body(client: TestClient) -> None:
+    response = client.post("/channels", json={"handle": "@test"})
+    assert response.status_code in (200, 400)
 
 
 def test_list_channels_returns_list(client: TestClient) -> None:

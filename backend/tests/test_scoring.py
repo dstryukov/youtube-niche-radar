@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from unittest.mock import MagicMock
 
-import pytest
 from sqlalchemy.orm import Session
 
 from app.models import Channel, Video, VideoScore, VideoSnapshot
@@ -17,7 +15,6 @@ def _make_mock_db(
     channel: Channel | None = None,
     snapshot: VideoSnapshot | None = None,
     previous_videos: list[Video] = None,
-    previous_snapshots: dict[int, VideoSnapshot] = None,
     existing_score: VideoScore | None = None,
 ) -> MagicMock:
     db = MagicMock(spec=Session)
@@ -25,18 +22,15 @@ def _make_mock_db(
     def mock_get(model, ident):
         if model == Channel and channel and ident == channel.id:
             return channel
-        if model == Video:
-            return None
         return None
 
     db.get = mock_get
     db.add = MagicMock()
     db.flush = MagicMock()
 
-    def mock_scalar(stmt):
-        return existing_score
-
-    db.scalar = mock_scalar
+    # scalar is called for: current _latest_snapshot, each prev _latest_snapshot, AIClassification, then existing VideoScore
+    n_prev = len(previous_videos) if previous_videos else 0
+    db.scalar.side_effect = [snapshot] + [None] * n_prev + [None, existing_score]
 
     def mock_scalars(stmt):
         prev = previous_videos or []
@@ -153,15 +147,7 @@ def test_small_channel_breakout_low_views() -> None:
 
 
 def test_outlier_score_math() -> None:
-    vpd_current = 10000.0
-    vpd_baseline = 1000.0
-    multiplier = (vpd_current + 1) / (vpd_baseline + 1)
-    expected_score = math.log10(multiplier)
-
     video, snapshot, channel = _make_video(published_at_days_ago=2, view_count=20_000)
-    now = datetime.now(UTC)
-    age_days = (now - video.published_at).total_seconds() / 86400
-    actual_vpd = 20_000 / max(age_days, 0.25)
 
     prev_video, prev_snapshot, _ = _make_video(
         published_at_days_ago=30, view_count=30_000, video_id=2
