@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { getOutliers } from '../lib/api';
 import type { Outlier, OutlierFilters } from '../lib/api';
 import { formatNumber, formatViewsPerDay, formatSubscribers } from '../lib/format';
@@ -17,7 +17,7 @@ type SelectFilter = {
 export default function OutlierExplorer() {
   const [data, setData] = useState<Outlier[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [minScore, setMinScore] = useState('');
   const [smallBreakout, setSmallBreakout] = useState(false);
@@ -30,6 +30,7 @@ export default function OutlierExplorer() {
   const fetchData = useCallback(async (filters: OutlierFilters) => {
     setLoading(true);
     setError(null);
+    setData(null);
     try {
       const result = await getOutliers(filters);
       setData(result);
@@ -40,6 +41,10 @@ export default function OutlierExplorer() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchData(DEFAULT_FILTERS);
+  }, [fetchData]);
 
   const buildFilters = useCallback((): OutlierFilters => {
     const f: OutlierFilters = { limit: 25, sort };
@@ -58,6 +63,10 @@ export default function OutlierExplorer() {
   }, [minScore, smallBreakout, formatLabel, nicheLabel, faceless, ai, sort]);
 
   const handleApply = () => {
+    if (minScore && isNaN(parseFloat(minScore))) {
+      setError('Введите корректное число для минимальной аномальности');
+      return;
+    }
     fetchData(buildFilters());
   };
 
