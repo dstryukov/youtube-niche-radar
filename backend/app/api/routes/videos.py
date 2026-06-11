@@ -11,6 +11,8 @@ from app.services.ai_classifier import classify_and_save_video
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 
+VALID_SORTS = {"outlier_score", "views_per_day", "published_at", "outlier_multiplier"}
+
 
 def _latest_classification_subquery():
     return (
@@ -24,15 +26,34 @@ def _latest_classification_subquery():
     )
 
 
+def _sort_clause(sort: str):
+    mapping = {
+        "outlier_score": desc(VideoScore.outlier_score),
+        "views_per_day": desc(VideoScore.views_per_day),
+        "published_at": desc(Video.published_at),
+        "outlier_multiplier": desc(VideoScore.outlier_multiplier),
+    }
+    return mapping[sort]
+
+
 @router.get("/outliers", response_model=list[OutlierRead])
 def list_outliers(
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=500),
     min_outlier_score: float | None = None,
-    small_channel_only: bool = False,
+    small_channel_breakout: bool | None = None,
     format_label: str | None = None,
     niche_label: str | None = None,
+    is_faceless_friendly: bool | None = None,
+    is_ai_friendly: bool | None = None,
+    sort: str = Query(default="outlier_score"),
 ) -> list[OutlierRead]:
+    if sort not in VALID_SORTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid sort value '{sort}'. Allowed: {', '.join(sorted(VALID_SORTS))}",
+        )
+
     latest_class = _latest_classification_subquery()
     stmt = (
         select(Video, Channel, VideoScore, AIClassification)
@@ -40,17 +61,21 @@ def list_outliers(
         .join(VideoScore, VideoScore.video_id == Video.id)
         .outerjoin(latest_class, latest_class.c.video_id == Video.id)
         .outerjoin(AIClassification, AIClassification.id == latest_class.c.classification_id)
-        .order_by(desc(VideoScore.outlier_score), desc(VideoScore.views_per_day))
+        .order_by(_sort_clause(sort), desc(VideoScore.views_per_day))
         .limit(limit)
     )
     if min_outlier_score is not None:
         stmt = stmt.where(VideoScore.outlier_score >= min_outlier_score)
-    if small_channel_only:
+    if small_channel_breakout:
         stmt = stmt.where(VideoScore.is_small_channel_breakout.is_(True))
     if format_label:
         stmt = stmt.where(AIClassification.format_label == format_label)
     if niche_label:
         stmt = stmt.where(AIClassification.niche_label == niche_label)
+    if is_faceless_friendly is not None:
+        stmt = stmt.where(AIClassification.is_faceless_friendly.is_(is_faceless_friendly))
+    if is_ai_friendly is not None:
+        stmt = stmt.where(AIClassification.is_ai_friendly.is_(is_ai_friendly))
 
     rows = db.execute(stmt).all()
 

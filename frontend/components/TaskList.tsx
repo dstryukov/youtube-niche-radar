@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getTasks } from '../lib/api';
 import type { TaskRun } from '../lib/api';
 
@@ -33,12 +33,22 @@ function formatTaskType(type: string): string {
 export default function TaskList() {
   const [tasks, setTasks] = useState<TaskRun[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    getTasks(10)
-      .then(setTasks)
-      .catch(() => setError('Не удалось загрузить список задач'));
+  const loadTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getTasks(10);
+      setTasks(data);
+    } catch {
+      setError('Не удалось загрузить список задач');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadTasks(); }, [loadTasks]);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
@@ -51,6 +61,11 @@ export default function TaskList() {
 
   return (
     <div className="task-list-section">
+      <div className="task-list-header">
+        <button className="btn btn-sm btn-secondary" onClick={loadTasks} disabled={loading}>
+          {loading ? '…' : 'Обновить'}
+        </button>
+      </div>
       {error ? (
         <div className="message message-error" style={{ margin: '16px' }}>{error}</div>
       ) : tasks.length === 0 ? (

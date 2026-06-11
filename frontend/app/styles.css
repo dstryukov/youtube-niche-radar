@@ -112,8 +112,38 @@ h1 { font-size: 36px; line-height: 1.1; margin: 0 0 6px; }
 .task-error { color: #b42318; font-size: 12px; cursor: help; }
 .badge-red { background: #fef3f2; color: #b42318; }
 
+/* Select */
+.select { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 9px 14px; font-size: 14px; background: #fff; color: #101828; outline: none; cursor: pointer; transition: border-color .12s; appearance: auto; }
+.select:focus { border-color: #3538cd; box-shadow: 0 0 0 3px rgb(53 56 205 / .12); }
+
+/* Checkbox */
+.checkbox-label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #344054; cursor: pointer; padding: 8px 0; }
+.checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3538cd; cursor: pointer; }
+
+/* Filter panel */
+.filter-panel { padding: 16px 20px; border-bottom: 1px solid #eaecf0; }
+.filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.filter-item { display: flex; flex-direction: column; gap: 4px; }
+.filter-label { font-size: 13px; font-weight: 500; color: #475467; }
+.filter-actions { justify-content: flex-end; }
+.filter-btn-row { display: flex; gap: 8px; }
+.filter-btn-row .btn { flex: 1; }
+
+/* Outlier explorer */
+.outlier-explorer { display: flex; flex-direction: column; }
+.outlier-results { }
+.outlier-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: #98a2b3; font-size: 14px; }
+
+/* Spinner */
+.spinner { width: 20px; height: 20px; border: 2px solid #eaecf0; border-top-color: #3538cd; border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Task list header */
+.task-list-header { display: flex; justify-content: flex-end; padding: 12px 20px; border-bottom: 1px solid #eaecf0; }
+
 @media (max-width: 900px) {
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .grid { grid-template-columns: 1fr; }
@@ -121,4 +151,5 @@ h1 { font-size: 36px; line-height: 1.1; margin: 0 0 6px; }
   .panel { border-radius: 12px; }
   .form-row { flex-direction: column; align-items: stretch; }
   .file-wrapper { min-width: 0; }
+  .filter-btn-row { flex-direction: column; }
 }

@@ -105,7 +105,11 @@ export default function ChannelManager() {
     setImporting(true);
     try {
       const result = await importChannelsCsv(csvFile);
-      setChannels(prev => [...result.channels, ...prev]);
+      setChannels(prev => {
+        const seen = new Set(prev.map(c => c.id));
+        const newOnes = result.channels.filter(c => !seen.has(c.id));
+        return [...newOnes, ...prev];
+      });
       const parts = [`Импортировано: ${result.imported}`, `пропущено: ${result.skipped}`];
       if (result.errors.length > 0) parts.push(`ошибок: ${result.errors.length}`);
       showSuccess(parts.join(', '));

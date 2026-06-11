@@ -13,6 +13,7 @@ export type Outlier = {
   title: string;
   channel_title: string | null;
   channel_subscribers: number | null;
+  published_at: string;
   latest_views: number | null;
   views_per_day: number | null;
   outlier_multiplier: number | null;
@@ -89,8 +90,28 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   return response.json();
 }
 
-export async function getOutliers(): Promise<Outlier[]> {
-  const response = await fetch(`${getApiBase()}/videos/outliers?limit=25`, { cache: 'no-store' });
+export type OutlierFilters = {
+  minOutlierScore?: number;
+  smallChannelBreakout?: boolean;
+  formatLabel?: string;
+  nicheLabel?: string;
+  isFacelessFriendly?: boolean;
+  isAiFriendly?: boolean;
+  sort?: 'outlier_score' | 'views_per_day' | 'published_at' | 'outlier_multiplier';
+  limit?: number;
+};
+
+export async function getOutliers(filters?: OutlierFilters): Promise<Outlier[]> {
+  const params = new URLSearchParams();
+  params.set('limit', String(filters?.limit ?? 25));
+  if (filters?.minOutlierScore != null) params.set('min_outlier_score', String(filters.minOutlierScore));
+  if (filters?.smallChannelBreakout != null) params.set('small_channel_breakout', String(filters.smallChannelBreakout));
+  if (filters?.formatLabel) params.set('format_label', filters.formatLabel);
+  if (filters?.nicheLabel) params.set('niche_label', filters.nicheLabel);
+  if (filters?.isFacelessFriendly != null) params.set('is_faceless_friendly', String(filters.isFacelessFriendly));
+  if (filters?.isAiFriendly != null) params.set('is_ai_friendly', String(filters.isAiFriendly));
+  if (filters?.sort) params.set('sort', filters.sort);
+  const response = await fetch(`${getApiBase()}/videos/outliers?${params}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Не удалось загрузить список аномалий');
   return response.json();
 }
