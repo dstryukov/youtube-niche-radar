@@ -1,5 +1,5 @@
 -- Migration 004: additional indexes for query performance
--- Safe to run on a fresh or existing database.
+-- Requires 001_init.sql and 003_upgrade_0_1_to_0_2.sql to have been applied first.
 
 -- video_scores: ensure outlier_score and breakout indexes exist
 CREATE INDEX IF NOT EXISTS ix_video_scores_outlier_score ON video_scores(outlier_score);

@@ -1,5 +1,6 @@
 -- Upgrade helper for users who already ran the first MVP migration.
--- Safe to run on a fresh database after 001_init.sql; most commands are IF EXISTS / IF NOT EXISTS.
+-- Safe to run after 001_init.sql; most commands use IF EXISTS / IF NOT EXISTS.
+-- Normalises task_runs.status default for databases created before v0.2.
 
 DO $$
 BEGIN
@@ -11,6 +12,7 @@ END $$;
 ALTER TABLE channels ADD COLUMN IF NOT EXISTS source VARCHAR(64) DEFAULT 'manual';
 ALTER TABLE channels ADD COLUMN IF NOT EXISTS tags JSONB;
 ALTER TABLE channels ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS ix_channels_status ON channels(status);
 
 ALTER TABLE videos ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;
@@ -82,6 +84,10 @@ CREATE INDEX IF NOT EXISTS ix_task_runs_provider_task_id ON task_runs(provider_t
 CREATE INDEX IF NOT EXISTS ix_task_runs_task_type ON task_runs(task_type);
 CREATE INDEX IF NOT EXISTS ix_task_runs_status ON task_runs(status);
 CREATE INDEX IF NOT EXISTS ix_task_runs_channel_id ON task_runs(channel_id);
+
+-- Normalise default for databases that still carry the old 'queued' default from v0.1
+ALTER TABLE task_runs ALTER COLUMN status SET DEFAULT 'pending';
+UPDATE task_runs SET status = 'pending' WHERE status = 'queued';
 
 CREATE TABLE IF NOT EXISTS api_quota_usage (
   id SERIAL PRIMARY KEY,
