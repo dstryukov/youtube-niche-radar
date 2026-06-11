@@ -43,7 +43,8 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_API_BASE: http://api:8001
+      API_INTERNAL_BASE: http://api:8001
+      NEXT_PUBLIC_API_BROWSER_BASE: http://localhost:8001
     volumes:
       - ./frontend:/app
       - /app/node_modules

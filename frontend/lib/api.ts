@@ -81,11 +81,32 @@ export type SyncAllResponse = {
 };
 
 export function getApiBase(): string {
-  return process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
+  if (typeof window !== 'undefined') {
+    return (
+      process.env.NEXT_PUBLIC_API_BROWSER_BASE ||
+      process.env.NEXT_PUBLIC_API_BASE ||
+      'http://localhost:8001'
+    );
+  }
+
+  return (
+    process.env.API_INTERNAL_BASE ||
+    process.env.NEXT_PUBLIC_API_BASE ||
+    'http://localhost:8001'
+  );
+}
+
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    const res = await fetch(input, init);
+    return res;
+  } catch {
+    throw new Error('Не удалось подключиться к API. Проверьте, что backend запущен и адрес API указан правильно.');
+  }
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await fetch(`${getApiBase()}/dashboard/summary`, { cache: 'no-store' });
+  const response = await apiFetch(`${getApiBase()}/dashboard/summary`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Не удалось загрузить сводку');
   return response.json();
 }
@@ -111,13 +132,13 @@ export async function getOutliers(filters?: OutlierFilters): Promise<Outlier[]> 
   if (filters?.isFacelessFriendly != null) params.set('is_faceless_friendly', String(filters.isFacelessFriendly));
   if (filters?.isAiFriendly != null) params.set('is_ai_friendly', String(filters.isAiFriendly));
   if (filters?.sort) params.set('sort', filters.sort);
-  const response = await fetch(`${getApiBase()}/videos/outliers?${params}`, { cache: 'no-store' });
+  const response = await apiFetch(`${getApiBase()}/videos/outliers?${params}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Не удалось загрузить список аномалий');
   return response.json();
 }
 
 export async function getChannels(): Promise<Channel[]> {
-  const res = await fetch(`${getApiBase()}/channels`, { cache: 'no-store' });
+  const res = await apiFetch(`${getApiBase()}/channels`, { cache: 'no-store' });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(extractDetail(body) ?? 'Не удалось загрузить список каналов');
@@ -132,7 +153,7 @@ export async function createChannel(payload: {
   tags?: string[] | null;
   notes?: string | null;
 }): Promise<Channel> {
-  const res = await fetch(`${getApiBase()}/channels`, {
+  const res = await apiFetch(`${getApiBase()}/channels`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ source: 'manual', tags: null, notes: null, ...payload }),
@@ -147,7 +168,7 @@ export async function createChannel(payload: {
 export async function importChannelsCsv(file: File): Promise<ChannelImportResult> {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${getApiBase()}/channels/import-csv`, {
+  const res = await apiFetch(`${getApiBase()}/channels/import-csv`, {
     method: 'POST',
     body: formData,
   });
@@ -162,7 +183,7 @@ export async function syncChannel(channelId: number, limit?: number): Promise<Sy
   const params = new URLSearchParams();
   if (limit != null) params.set('limit', String(limit));
   const qs = params.toString();
-  const res = await fetch(`${getApiBase()}/channels/${channelId}/sync${qs ? '?' + qs : ''}`, {
+  const res = await apiFetch(`${getApiBase()}/channels/${channelId}/sync${qs ? '?' + qs : ''}`, {
     method: 'POST',
   });
   if (!res.ok) {
@@ -177,7 +198,7 @@ export async function syncAllChannels(limit?: number, maxChannels?: number): Pro
   if (limit != null) params.set('limit', String(limit));
   if (maxChannels != null) params.set('max_channels', String(maxChannels));
   const qs = params.toString();
-  const res = await fetch(`${getApiBase()}/channels/sync-all${qs ? '?' + qs : ''}`, {
+  const res = await apiFetch(`${getApiBase()}/channels/sync-all${qs ? '?' + qs : ''}`, {
     method: 'POST',
   });
   if (!res.ok) {
@@ -191,7 +212,7 @@ export async function getTasks(limit?: number): Promise<TaskRun[]> {
   const params = new URLSearchParams();
   if (limit != null) params.set('limit', String(limit));
   const qs = params.toString();
-  const res = await fetch(`${getApiBase()}/tasks${qs ? '?' + qs : ''}`, { cache: 'no-store' });
+  const res = await apiFetch(`${getApiBase()}/tasks${qs ? '?' + qs : ''}`, { cache: 'no-store' });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(extractDetail(body) ?? 'Не удалось загрузить список задач');

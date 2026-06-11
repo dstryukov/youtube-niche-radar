@@ -78,6 +78,16 @@ docker compose up --build
 
 This starts: PostgreSQL, Redis, FastAPI (port 8001), Celery worker, and the frontend (port 3000).
 
+### Frontend environment variables
+
+| Variable | Scope | Description | Docker value |
+|---|---|---|---|
+| `API_INTERNAL_BASE` | Next.js server-side | API URL used by server components and data fetching inside the Docker network | `http://api:8001` |
+| `NEXT_PUBLIC_API_BROWSER_BASE` | Browser (client-side) | API URL used by browser fetch from the user's machine | `http://localhost:8001` |
+| `NEXT_PUBLIC_API_BASE` | Both (fallback) | Fallback if the more specific variables are not set | — |
+
+In Docker, `API_INTERNAL_BASE=http://api:8001` lets Next.js server reach the API container by hostname, while `NEXT_PUBLIC_API_BROWSER_BASE=http://localhost:8001` lets the browser reach the exposed port on the host.
+
 ### Database migrations
 
 Fresh database (one command):
