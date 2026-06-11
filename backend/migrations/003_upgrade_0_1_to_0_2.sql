@@ -22,12 +22,14 @@ ALTER TABLE video_scores ADD COLUMN IF NOT EXISTS outlier_multiplier DOUBLE PREC
 ALTER TABLE video_scores ADD COLUMN IF NOT EXISTS velocity_score DOUBLE PRECISION;
 ALTER TABLE video_scores ADD COLUMN IF NOT EXISTS consistency_score DOUBLE PRECISION;
 ALTER TABLE video_scores ADD COLUMN IF NOT EXISTS repeatability_score DOUBLE PRECISION;
+ALTER TABLE video_scores ADD COLUMN IF NOT EXISTS is_small_channel_breakout BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE video_scores ADD COLUMN IF NOT EXISTS explanation TEXT;
 CREATE INDEX IF NOT EXISTS ix_video_scores_calculated_at ON video_scores(calculated_at);
 CREATE INDEX IF NOT EXISTS ix_video_scores_views_per_day ON video_scores(views_per_day);
 CREATE INDEX IF NOT EXISTS ix_video_scores_views_per_sub ON video_scores(views_per_sub);
 CREATE INDEX IF NOT EXISTS ix_video_scores_outlier_multiplier ON video_scores(outlier_multiplier);
 CREATE INDEX IF NOT EXISTS ix_video_scores_repeatability_score ON video_scores(repeatability_score);
+CREATE INDEX IF NOT EXISTS ix_video_scores_small_breakout ON video_scores(is_small_channel_breakout);
 
 CREATE TABLE IF NOT EXISTS formats (
   id SERIAL PRIMARY KEY,
@@ -66,7 +68,7 @@ CREATE TABLE IF NOT EXISTS task_runs (
   id SERIAL PRIMARY KEY,
   provider_task_id VARCHAR(128) UNIQUE,
   task_type VARCHAR(64) NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'queued',
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
   channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,
   started_at TIMESTAMPTZ,
   finished_at TIMESTAMPTZ,

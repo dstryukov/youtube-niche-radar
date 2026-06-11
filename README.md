@@ -80,28 +80,28 @@ This starts: PostgreSQL, Redis, FastAPI (port 8001), Celery worker, and the fron
 
 ### Database migrations
 
-Run schema:
+Fresh database (one command):
 
 ```bash
-make migrate
+make migrate-all
 ```
 
-Seed format/niche labels:
+This runs: 001_init.sql (core schema) → 003_upgrade_0_1_to_0_2.sql (v0.2 columns) → 004_add_indexes.sql (indexes) → 002_seed_formats.sql (seed data).
+
+Step by step:
 
 ```bash
-make seed
-```
-
-Apply indexes (safe to run anytime):
-
-```bash
-make migrate-indexes
+make migrate          # 001 — core tables
+make migrate-upgrade  # 003 — v0.2 columns
+make migrate-indexes  # 004 — extra indexes
+make seed             # 002 — format/niche labels
 ```
 
 If upgrading from v0.1:
 
 ```bash
-make migrate-upgrade
+make migrate          # creates any missing core tables
+make migrate-upgrade  # adds v0.2 columns
 make seed
 make migrate-indexes
 ```
