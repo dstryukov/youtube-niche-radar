@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 .env
 .next/
+node_modules/
 venv/
 .venv/
 .pytest_cache/
@@ -14,3 +15,4 @@ venv/
 .DS_Store
 Thumbs.db
 *.log
+*.tsbuildinfo
