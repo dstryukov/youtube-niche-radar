@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import './styles.css';
 
 export const metadata: Metadata = {
-  title: 'YouTube Niche Radar',
-  description: 'Dashboard for YouTube niches, outliers, formats, and breakouts'
+  title: 'MVP-радар — YouTube Niche Radar',
+  description: 'Поиск YouTube-ниш, аномальных роликов, форматов и идей для адаптации'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body>{children}</body>
     </html>
   );

@@ -29,16 +29,18 @@ export type Outlier = {
   };
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
+export function getApiBase(): string {
+  return process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
+}
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await fetch(`${API_BASE}/dashboard/summary`, { cache: 'no-store' });
-  if (!response.ok) throw new Error('Failed to load dashboard summary');
+  const response = await fetch(`${getApiBase()}/dashboard/summary`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Не удалось загрузить сводку');
   return response.json();
 }
 
 export async function getOutliers(): Promise<Outlier[]> {
-  const response = await fetch(`${API_BASE}/videos/outliers?limit=25`, { cache: 'no-store' });
-  if (!response.ok) throw new Error('Failed to load outliers');
+  const response = await fetch(`${getApiBase()}/videos/outliers?limit=25`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Не удалось загрузить список аномалий');
   return response.json();
 }
