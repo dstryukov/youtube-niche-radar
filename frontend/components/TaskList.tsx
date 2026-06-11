@@ -86,7 +86,9 @@ export default function TaskList() {
             </tr>
           </thead>
           <tbody>
-            {tasks.map(t => (
+            {tasks.map(t => {
+              const r = t.result as Record<string, number> | null;
+              return (
               <tr key={t.id}>
                 <td>{formatTaskType(t.task_type)}</td>
                 <td>
@@ -97,9 +99,20 @@ export default function TaskList() {
                 <td>{t.channel_id != null ? `#${t.channel_id}` : '—'}</td>
                 <td>{formatDate(t.started_at)}</td>
                 <td>{formatDate(t.finished_at)}</td>
-                <td>{t.error ? <span className="task-error" title={t.error}>{t.error.length > 60 ? t.error.slice(0, 60) + '…' : t.error}</span> : '—'}</td>
+                <td>
+                  {t.error ? (
+                    <span className="task-error" title={t.error}>{t.error.length > 60 ? t.error.slice(0, 60) + '…' : t.error}</span>
+                  ) : t.task_type === 'sync_channel' && r ? (
+                    <div className="task-meta">
+                      {r.requested_limit != null && <span className="meta-item">Запрошено видео: {r.requested_limit}</span>}
+                      {r.fetched_video_ids != null && <span className="meta-item">Получено видео: {r.fetched_video_ids}</span>}
+                      {r.scores_calculated != null && <span className="meta-item">Скорингов рассчитано: {r.scores_calculated}</span>}
+                    </div>
+                  ) : '—'}
+                </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}

@@ -7,7 +7,7 @@ from celery import Celery
 
 from app.core.config import settings
 from app.db.session import SessionLocal
-from app.models import TaskRun
+from app.models import Channel, TaskRun
 from app.services.ingest import sync_channel_videos
 
 celery_app = Celery("youtube_niche_radar", broker=settings.redis_url, backend=settings.redis_url)
@@ -47,6 +47,10 @@ def sync_channel_task(self, task_run_id: int, channel_id: int, limit: int | None
     db = SessionLocal()
     try:
         result = sync_channel_videos(db, channel_id, limit=limit, related_task_id=task_run_id)
+        channel = db.get(Channel, channel_id)
+        result["requested_limit"] = limit or settings.default_sync_limit
+        result["channel_title"] = channel.title if channel else None
+        result["youtube_channel_id"] = channel.youtube_channel_id if channel else None
         update_task_status(task_run_id, status="success", result=result)
         return result
     except Exception as exc:

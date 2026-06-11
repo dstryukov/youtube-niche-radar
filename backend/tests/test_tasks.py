@@ -89,3 +89,31 @@ def test_update_task_status_rollback_on_error() -> None:
 
     mock_db.rollback.assert_called_once()
     mock_db.close.assert_called_once()
+
+
+def test_update_task_status_with_metadata() -> None:
+    """Result should include extra metadata fields relevant to sync."""
+    mock_db = MagicMock()
+    mock_task_run = MagicMock()
+    mock_task_run.status = "running"
+    mock_task_run.started_at = datetime.now(UTC)
+    mock_task_run.finished_at = None
+    mock_task_run.result = None
+    mock_task_run.error = None
+    mock_db.get.return_value = mock_task_run
+
+    result = {
+        "requested_limit": 150,
+        "fetched_video_ids": 138,
+        "scores_calculated": 138,
+        "videos_created": 10,
+        "videos_updated": 128,
+    }
+
+    with patch("app.tasks.SessionLocal", return_value=mock_db):
+        update_task_status(1, status="success", result=result)
+
+    assert mock_task_run.status == "success"
+    assert mock_task_run.finished_at is not None
+    assert mock_task_run.result == result
+    mock_db.commit.assert_called_once()

@@ -14,12 +14,17 @@ from app.tasks import sync_channel_task
 router = APIRouter(prefix="/channels", tags=["channels"])
 
 
+def _resolve_limit(limit: int | None) -> int:
+    return limit if limit is not None else settings.default_sync_limit
+
+
 def _queue_channel_sync(db: Session, channel_id: int, limit: int | None = None) -> SyncResponse:
+    resolved = _resolve_limit(limit)
     task_run = TaskRun(
         task_type="sync_channel",
         status="pending",
         channel_id=channel_id,
-        params={"limit": limit or settings.default_sync_limit},
+        params={"limit": resolved},
     )
     db.add(task_run)
     db.commit()
@@ -28,7 +33,12 @@ def _queue_channel_sync(db: Session, channel_id: int, limit: int | None = None) 
     task = sync_channel_task.apply_async(args=[task_run.id, channel_id, limit])
     task_run.provider_task_id = task.id
     db.commit()
-    return SyncResponse(task_run_id=task_run.id, task_id=task.id, channel_id=channel_id)
+    return SyncResponse(
+        task_run_id=task_run.id,
+        task_id=task.id,
+        channel_id=channel_id,
+        requested_limit=resolved,
+    )
 
 
 @router.post("", response_model=ChannelRead)
@@ -87,10 +97,16 @@ def sync_all_channels(
     limit: int | None = Query(default=None, ge=1, le=500),
     max_channels: int = Query(default=100, ge=1, le=1_000),
 ) -> SyncAllResponse:
+    resolved = _resolve_limit(limit)
     channels = list(
         db.scalars(
             select(Channel).where(Channel.status == "active").order_by(Channel.last_synced_at.asc().nullsfirst()).limit(max_channels)
         ).all()
     )
     tasks = [_queue_channel_sync(db, channel.id, limit) for channel in channels]
-    return SyncAllResponse(queued=len(tasks), tasks=tasks)
+    return SyncAllResponse(
+        queued=len(tasks),
+        tasks=tasks,
+        requested_limit=resolved,
+        max_channels=max_channels,
+    )

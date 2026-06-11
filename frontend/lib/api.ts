@@ -73,11 +73,14 @@ export type SyncResponse = {
   task_id: string;
   channel_id: number;
   status: string;
+  requested_limit?: number;
 };
 
 export type SyncAllResponse = {
   queued: number;
   tasks: SyncResponse[];
+  requested_limit?: number;
+  max_channels?: number;
 };
 
 export function getApiBase(): string {

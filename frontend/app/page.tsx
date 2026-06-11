@@ -22,7 +22,7 @@ export default async function Page() {
           <>
             <Card label="Каналы" metric={formatNumber(summary.channels_count, 0)} hint="Отслеживаемые каналы" />
             <Card label="Видео" metric={formatNumber(summary.videos_count, 0)} hint="Собранные ролики" />
-            <Card label="Прорывы малых каналов" metric={formatNumber(summary.small_channel_breakouts_count, 0)} hint="Видео, резко обогнавшие размер канала" />
+            <Card label="Прорывы малых каналов" metric={formatNumber(summary.small_channel_breakouts_count, 0)} hint="Видео малых каналов, которые набрали непропорционально много просмотров." />
             <Card label="Средняя аномальность" metric={formatNumber(summary.avg_outlier_score)} hint="Средний outlier score по базе" />
           </>
         ) : (

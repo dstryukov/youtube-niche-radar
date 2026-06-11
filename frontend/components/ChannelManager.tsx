@@ -60,6 +60,7 @@ export default function ChannelManager() {
   const [success, setSuccess] = useState<string | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [syncLimit, setSyncLimit] = useState(150);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const loadChannels = useCallback(async () => {
@@ -126,8 +127,8 @@ export default function ChannelManager() {
     showSuccess('');
     setSyncingIds(prev => new Set(prev).add(channelId));
     try {
-      await syncChannel(channelId);
-      showSuccess('Синхронизация запущена');
+      const result = await syncChannel(channelId, syncLimit);
+      showSuccess(`Синхронизация запущена: до ${result.requested_limit ?? syncLimit} последних видео.`);
       setTimeout(loadChannels, 3000);
     } catch (e) {
       showError(e instanceof Error ? e.message : 'Не удалось запустить синхронизацию');
@@ -144,8 +145,8 @@ export default function ChannelManager() {
     showSuccess('');
     setSyncAllLoading(true);
     try {
-      const result = await syncAllChannels();
-      showSuccess(`Запущена синхронизация ${result.queued} каналов`);
+      const result = await syncAllChannels(syncLimit);
+      showSuccess(`Синхронизация всех каналов запущена: до ${syncLimit} видео на канал.`);
       setTimeout(loadChannels, 3000);
     } catch (e) {
       showError(e instanceof Error ? e.message : 'Не удалось запустить синхронизацию всех каналов');
@@ -202,6 +203,20 @@ export default function ChannelManager() {
           <button className="btn btn-secondary" onClick={handleImportCsv} disabled={!csvFile || importing}>
             {importing ? 'Импорт…' : 'Импортировать CSV'}
           </button>
+          <div className="sync-depth-control">
+            <label className="sync-depth-label">Глубина синхронизации</label>
+            <select
+              className="select sync-depth-select"
+              value={syncLimit}
+              onChange={e => setSyncLimit(Number(e.target.value))}
+            >
+              <option value={50}>50 последних видео</option>
+              <option value={100}>100 последних видео</option>
+              <option value={150}>150 последних видео</option>
+              <option value={300}>300 последних видео</option>
+              <option value={500}>500 последних видео</option>
+            </select>
+          </div>
           <button className="btn btn-accent" onClick={handleSyncAll} disabled={syncAllLoading || channels.length === 0}>
             {syncAllLoading ? 'Синхронизация…' : 'Синхронизировать все'}
           </button>

@@ -168,9 +168,13 @@ def sync_channel_videos(
     db.commit()
     return {
         "videos_found": len(video_ids),
+        "fetched_video_ids": len(video_ids),
         "videos_upserted": upserted,
+        "videos_created": upserted,
         "videos_updated": updated,
         "snapshots_created": snapshots,
+        "video_snapshots_created": snapshots,
+        "scores_calculated": snapshots,
         "youtube_quota_units": 1 + playlist_requests + video_requests,
     }
 

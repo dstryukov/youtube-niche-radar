@@ -44,11 +44,14 @@ class SyncResponse(BaseModel):
     task_id: str
     channel_id: int
     status: str = "pending"
+    requested_limit: int | None = None
 
 
 class SyncAllResponse(BaseModel):
     queued: int
     tasks: list[SyncResponse]
+    requested_limit: int | None = None
+    max_channels: int | None = None
 
 
 class TaskRunRead(BaseModel):

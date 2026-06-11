@@ -41,9 +41,35 @@ def test_sync_channel_not_found(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_sync_all_returns_empty(client: TestClient) -> None:
+def test_sync_channel_limit_too_high_returns_422(client: TestClient) -> None:
+    response = client.post("/channels/1/sync?limit=501")
+    assert response.status_code == 422
+
+
+def test_sync_channel_limit_zero_returns_422(client: TestClient) -> None:
+    response = client.post("/channels/1/sync?limit=0")
+    assert response.status_code == 422
+
+
+def test_sync_all_limit_too_high_returns_422(client: TestClient) -> None:
+    response = client.post("/channels/sync-all?limit=501")
+    assert response.status_code == 422
+
+
+def test_sync_response_contains_requested_limit(client: TestClient) -> None:
+    """Sync-all response should include requested_limit and max_channels."""
     response = client.post("/channels/sync-all")
     assert response.status_code == 200
     body = response.json()
     assert "queued" in body
     assert "tasks" in body
+    assert "requested_limit" in body
+    assert "max_channels" in body
+
+
+def test_sync_response_with_limit_param(client: TestClient) -> None:
+    """Sync-all with explicit limit should reflect it in response."""
+    response = client.post("/channels/sync-all?limit=150")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["requested_limit"] == 150
