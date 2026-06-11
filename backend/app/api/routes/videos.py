@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -11,7 +13,7 @@ from app.services.ai_classifier import classify_and_save_video
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 
-VALID_SORTS = {"outlier_score", "views_per_day", "published_at", "outlier_multiplier"}
+VALID_SORTS = {"outlier_score", "views_per_day", "published_at", "outlier_multiplier", "latest_views"}
 
 
 def _latest_classification_subquery():
@@ -32,6 +34,7 @@ def _sort_clause(sort: str):
         "views_per_day": desc(VideoScore.views_per_day),
         "published_at": desc(Video.published_at),
         "outlier_multiplier": desc(VideoScore.outlier_multiplier),
+        "latest_views": desc(VideoScore.latest_views),
     }
     return mapping[sort]
 
@@ -47,12 +50,24 @@ def list_outliers(
     is_faceless_friendly: bool | None = None,
     is_ai_friendly: bool | None = None,
     sort: str = Query(default="outlier_score"),
+    min_views: int | None = None,
+    max_views: int | None = None,
+    min_views_per_day: float | None = None,
+    max_views_per_day: float | None = None,
+    published_after: datetime | None = None,
+    published_before: datetime | None = None,
 ) -> list[OutlierRead]:
     if sort not in VALID_SORTS:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid sort value '{sort}'. Allowed: {', '.join(sorted(VALID_SORTS))}",
         )
+    if min_views is not None and max_views is not None and min_views > max_views:
+        raise HTTPException(status_code=400, detail="min_views must not be greater than max_views")
+    if min_views_per_day is not None and max_views_per_day is not None and min_views_per_day > max_views_per_day:
+        raise HTTPException(status_code=400, detail="min_views_per_day must not be greater than max_views_per_day")
+    if published_after is not None and published_before is not None and published_after > published_before:
+        raise HTTPException(status_code=400, detail="published_after must not be later than published_before")
 
     latest_class = _latest_classification_subquery()
     stmt = (
@@ -76,6 +91,18 @@ def list_outliers(
         stmt = stmt.where(AIClassification.is_faceless_friendly.is_(is_faceless_friendly))
     if is_ai_friendly is not None:
         stmt = stmt.where(AIClassification.is_ai_friendly.is_(is_ai_friendly))
+    if min_views is not None:
+        stmt = stmt.where(VideoScore.latest_views >= min_views)
+    if max_views is not None:
+        stmt = stmt.where(VideoScore.latest_views <= max_views)
+    if min_views_per_day is not None:
+        stmt = stmt.where(VideoScore.views_per_day >= min_views_per_day)
+    if max_views_per_day is not None:
+        stmt = stmt.where(VideoScore.views_per_day <= max_views_per_day)
+    if published_after is not None:
+        stmt = stmt.where(Video.published_at >= published_after)
+    if published_before is not None:
+        stmt = stmt.where(Video.published_at <= published_before)
 
     rows = db.execute(stmt).all()
 

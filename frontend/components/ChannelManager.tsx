@@ -203,23 +203,32 @@ export default function ChannelManager() {
           <button className="btn btn-secondary" onClick={handleImportCsv} disabled={!csvFile || importing}>
             {importing ? 'Импорт…' : 'Импортировать CSV'}
           </button>
-          <div className="sync-depth-control">
-            <label className="sync-depth-label">Глубина синхронизации</label>
-            <select
-              className="select sync-depth-select"
-              value={syncLimit}
-              onChange={e => setSyncLimit(Number(e.target.value))}
-            >
-              <option value={50}>50 последних видео</option>
-              <option value={100}>100 последних видео</option>
-              <option value={150}>150 последних видео</option>
-              <option value={300}>300 последних видео</option>
-              <option value={500}>500 последних видео</option>
-            </select>
+        </div>
+      </div>
+
+      <div className="sync-settings">
+        <h3 className="sync-settings-title">Настройки синхронизации</h3>
+        <div className="sync-settings-body">
+          <div className="sync-settings-field">
+            <label className="sync-settings-label">Сколько последних видео сканировать</label>
+            <div className="sync-settings-row">
+              <select
+                className="select sync-settings-select"
+                value={syncLimit}
+                onChange={e => setSyncLimit(Number(e.target.value))}
+              >
+                <option value={50}>50 видео</option>
+                <option value={100}>100 видео</option>
+                <option value={150}>150 видео</option>
+                <option value={300}>300 видео</option>
+                <option value={500}>500 видео</option>
+              </select>
+              <button className="btn btn-accent" onClick={handleSyncAll} disabled={syncAllLoading || channels.length === 0}>
+                {syncAllLoading ? 'Синхронизация…' : 'Синхронизировать все'}
+              </button>
+            </div>
           </div>
-          <button className="btn btn-accent" onClick={handleSyncAll} disabled={syncAllLoading || channels.length === 0}>
-            {syncAllLoading ? 'Синхронизация…' : 'Синхронизировать все'}
-          </button>
+          <p className="sync-settings-hint">Чем больше глубина, тем точнее поиск аномалий, но тем выше расход YouTube API quota.</p>
         </div>
       </div>
 

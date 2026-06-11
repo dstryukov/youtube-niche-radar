@@ -104,3 +104,65 @@ def test_outliers_all_filters_together(client_with_mock_db: TestClient) -> None:
         "&limit=10"
     )
     assert response.status_code == 200
+
+
+def test_outliers_with_min_views(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?min_views=1000")
+    assert response.status_code == 200
+
+
+def test_outliers_with_max_views(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?max_views=10000")
+    assert response.status_code == 200
+
+
+def test_outliers_with_views_range(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?min_views=1000&max_views=10000")
+    assert response.status_code == 200
+
+
+def test_outliers_min_views_greater_than_max_returns_400(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?min_views=10000&max_views=1000")
+    assert response.status_code == 400
+
+
+def test_outliers_with_min_views_per_day(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?min_views_per_day=100.5")
+    assert response.status_code == 200
+
+
+def test_outliers_with_views_per_day_range(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?min_views_per_day=100&max_views_per_day=5000")
+    assert response.status_code == 200
+
+
+def test_outliers_min_views_per_day_greater_than_max_returns_400(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?min_views_per_day=5000&max_views_per_day=100")
+    assert response.status_code == 400
+
+
+def test_outliers_with_published_after(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?published_after=2024-01-01T00:00:00")
+    assert response.status_code == 200
+
+
+def test_outliers_with_published_before(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?published_before=2025-01-01T00:00:00")
+    assert response.status_code == 200
+
+
+def test_outliers_published_after_greater_than_before_returns_400(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get(
+        "/videos/outliers?published_after=2025-01-01T00:00:00&published_before=2024-01-01T00:00:00"
+    )
+    assert response.status_code == 400
+
+
+def test_outliers_sort_by_latest_views(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?sort=latest_views")
+    assert response.status_code == 200
+
+
+def test_outliers_legacy_request_still_works(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/videos/outliers?limit=25")
+    assert response.status_code == 200

@@ -121,7 +121,13 @@ export type OutlierFilters = {
   nicheLabel?: string;
   isFacelessFriendly?: boolean;
   isAiFriendly?: boolean;
-  sort?: 'outlier_score' | 'views_per_day' | 'published_at' | 'outlier_multiplier';
+  minViews?: number;
+  maxViews?: number;
+  minViewsPerDay?: number;
+  maxViewsPerDay?: number;
+  publishedAfter?: string;
+  publishedBefore?: string;
+  sort?: 'outlier_score' | 'views_per_day' | 'published_at' | 'outlier_multiplier' | 'latest_views';
   limit?: number;
 };
 
@@ -134,6 +140,12 @@ export async function getOutliers(filters?: OutlierFilters): Promise<Outlier[]> 
   if (filters?.nicheLabel) params.set('niche_label', filters.nicheLabel);
   if (filters?.isFacelessFriendly != null) params.set('is_faceless_friendly', String(filters.isFacelessFriendly));
   if (filters?.isAiFriendly != null) params.set('is_ai_friendly', String(filters.isAiFriendly));
+  if (filters?.minViews != null) params.set('min_views', String(filters.minViews));
+  if (filters?.maxViews != null) params.set('max_views', String(filters.maxViews));
+  if (filters?.minViewsPerDay != null) params.set('min_views_per_day', String(filters.minViewsPerDay));
+  if (filters?.maxViewsPerDay != null) params.set('max_views_per_day', String(filters.maxViewsPerDay));
+  if (filters?.publishedAfter) params.set('published_after', filters.publishedAfter);
+  if (filters?.publishedBefore) params.set('published_before', filters.publishedBefore);
   if (filters?.sort) params.set('sort', filters.sort);
   const response = await apiFetch(`${getApiBase()}/videos/outliers?${params}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Не удалось загрузить список аномалий');
