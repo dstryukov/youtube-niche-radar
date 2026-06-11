@@ -1,10 +1,15 @@
 import { getDashboardSummary, getOutliers } from '../lib/api';
+import type { Outlier } from '../lib/api';
 import { formatNumber, formatViewsPerDay, formatSubscribers } from '../lib/format';
+import ChannelManager from '../components/ChannelManager';
+import TaskList from '../components/TaskList';
 
 export default async function Page() {
-  const [summary, outliers] = await Promise.all([
+  const [summary, outliersRes] = await Promise.all([
     getDashboardSummary().catch(() => null),
-    getOutliers().catch(() => []),
+    getOutliers()
+      .then(data => ({ data, error: null as string | null }))
+      .catch(() => ({ data: null as Outlier[] | null, error: 'Не удалось загрузить аномалии' })),
   ]);
 
   return (
@@ -13,7 +18,7 @@ export default async function Page() {
         <div>
           <p className="eyebrow">MVP-радар</p>
           <h1>YouTube Niche Radar</h1>
-          <p className="muted">Ниши, форматы, аномальные ролики и small channel breakouts</p>
+          <p className="muted">Ниши, форматы, аномальные ролики и прорывы малых каналов</p>
         </div>
       </section>
 
@@ -36,8 +41,23 @@ export default async function Page() {
       </section>
 
       <section className="panel">
+        <h2>Управление каналами</h2>
+        <ChannelManager />
+      </section>
+
+      <section className="panel">
+        <h2>Последние задачи</h2>
+        <TaskList />
+      </section>
+
+      <section className="panel">
         <h2>Главные аномалии</h2>
-        {outliers.length > 0 ? (
+        {outliersRes.error ? (
+          <div className="empty-state">
+            <p className="title">{outliersRes.error}</p>
+            <p>Проверьте подключение к серверу</p>
+          </div>
+        ) : outliersRes.data && outliersRes.data.length > 0 ? (
           <table className="table">
             <thead>
               <tr>
@@ -49,7 +69,7 @@ export default async function Page() {
               </tr>
             </thead>
             <tbody>
-              {outliers.map((item) => (
+              {outliersRes.data.map((item) => (
                 <tr key={item.video_id}>
                   <td>
                     <a className="video-title" href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a>

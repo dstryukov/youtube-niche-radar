@@ -29,6 +29,56 @@ export type Outlier = {
   };
 };
 
+export type Channel = {
+  id: number;
+  youtube_channel_id: string;
+  title: string | null;
+  handle: string | null;
+  uploads_playlist_id: string | null;
+  subscriber_count: number | null;
+  view_count: number | null;
+  video_count: number | null;
+  country: string | null;
+  source: string | null;
+  tags: string[] | null;
+  last_synced_at: string | null;
+};
+
+export type TaskRun = {
+  id: number;
+  provider_task_id: string | null;
+  task_type: string;
+  status: string;
+  channel_id: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  params: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type ChannelImportResult = {
+  total_rows: number;
+  imported: number;
+  skipped: number;
+  errors: Array<Record<string, unknown>>;
+  channels: Channel[];
+};
+
+export type SyncResponse = {
+  task_run_id: number;
+  task_id: string;
+  channel_id: number;
+  status: string;
+};
+
+export type SyncAllResponse = {
+  queued: number;
+  tasks: SyncResponse[];
+};
+
 export function getApiBase(): string {
   return process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 }
@@ -43,4 +93,100 @@ export async function getOutliers(): Promise<Outlier[]> {
   const response = await fetch(`${getApiBase()}/videos/outliers?limit=25`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Не удалось загрузить список аномалий');
   return response.json();
+}
+
+export async function getChannels(): Promise<Channel[]> {
+  const res = await fetch(`${getApiBase()}/channels`, { cache: 'no-store' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(extractDetail(body) ?? 'Не удалось загрузить список каналов');
+  }
+  return res.json();
+}
+
+export async function createChannel(payload: {
+  channel_id?: string;
+  handle?: string;
+  source?: string;
+  tags?: string[] | null;
+  notes?: string | null;
+}): Promise<Channel> {
+  const res = await fetch(`${getApiBase()}/channels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source: 'manual', tags: null, notes: null, ...payload }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(extractDetail(body) ?? 'Не удалось добавить канал');
+  }
+  return res.json();
+}
+
+export async function importChannelsCsv(file: File): Promise<ChannelImportResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${getApiBase()}/channels/import-csv`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(extractDetail(body) ?? 'Не удалось импортировать CSV');
+  }
+  return res.json();
+}
+
+export async function syncChannel(channelId: number, limit?: number): Promise<SyncResponse> {
+  const params = new URLSearchParams();
+  if (limit != null) params.set('limit', String(limit));
+  const qs = params.toString();
+  const res = await fetch(`${getApiBase()}/channels/${channelId}/sync${qs ? '?' + qs : ''}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(extractDetail(body) ?? 'Не удалось запустить синхронизацию');
+  }
+  return res.json();
+}
+
+export async function syncAllChannels(limit?: number, maxChannels?: number): Promise<SyncAllResponse> {
+  const params = new URLSearchParams();
+  if (limit != null) params.set('limit', String(limit));
+  if (maxChannels != null) params.set('max_channels', String(maxChannels));
+  const qs = params.toString();
+  const res = await fetch(`${getApiBase()}/channels/sync-all${qs ? '?' + qs : ''}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(extractDetail(body) ?? 'Не удалось запустить синхронизацию всех каналов');
+  }
+  return res.json();
+}
+
+export async function getTasks(limit?: number): Promise<TaskRun[]> {
+  const params = new URLSearchParams();
+  if (limit != null) params.set('limit', String(limit));
+  const qs = params.toString();
+  const res = await fetch(`${getApiBase()}/tasks${qs ? '?' + qs : ''}`, { cache: 'no-store' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(extractDetail(body) ?? 'Не удалось загрузить список задач');
+  }
+  return res.json();
+}
+
+function extractDetail(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const obj = body as Record<string, unknown>;
+  if (typeof obj.detail === 'string') return obj.detail;
+  if (Array.isArray(obj.detail)) {
+    return obj.detail.map((d: unknown) => {
+      if (d && typeof d === 'object') return (d as Record<string, unknown>).msg ?? '';
+      return String(d);
+    }).filter(Boolean).join('; ');
+  }
+  return null;
 }
