@@ -398,6 +398,88 @@ export const FORMAT_OPTIONS = [
   'Other',
 ];
 
+export type NicheStats = {
+  niche: string;
+  channels: number;
+  videos: number;
+  outliers: number;
+  avg_outlier_score: number;
+  avg_views: number;
+  growth_rate: number;
+  videos_last_7_days: number;
+  videos_last_30_days: number;
+};
+
+export type TrendingNiche = {
+  niche: string;
+  growth_rate: number;
+};
+
+export type NicheCoverage = {
+  videos_total: number;
+  classified: number;
+  other: number;
+  coverage_percent: number;
+};
+
+export type ReclassifyResponse = {
+  videos_processed: number;
+  updated: number;
+  failed: number;
+};
+
+export async function getNicheStats(): Promise<NicheStats[]> {
+  const res = await apiFetch(`${getApiBase()}/analytics/niches`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить статистику ниш');
+  return res.json();
+}
+
+export async function getTrendingNiches(periodDays = 30): Promise<TrendingNiche[]> {
+  const res = await apiFetch(`${getApiBase()}/analytics/niches/trending?period_days=${periodDays}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить тренды ниш');
+  return res.json();
+}
+
+export async function getNicheCoverage(): Promise<NicheCoverage> {
+  const res = await apiFetch(`${getApiBase()}/analytics/niches/coverage`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить покрытие ниш');
+  return res.json();
+}
+
+export async function getNicheOutliers(niche: string, limit = 20): Promise<Outlier[]> {
+  const res = await apiFetch(`${getApiBase()}/analytics/niches/${encodeURIComponent(niche)}/outliers?limit=${limit}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить аномалии ниши');
+  return res.json();
+}
+
+export async function reclassifyNiches(): Promise<ReclassifyResponse> {
+  const res = await apiFetch(`${getApiBase()}/maintenance/reclassify-niches`, { method: 'POST' });
+  if (!res.ok) throw new Error('Не удалось переклассифицировать ниши');
+  return res.json();
+}
+
+export const NICHE_OPTIONS = [
+  'Relationships',
+  'Self Improvement',
+  'History',
+  'Finance',
+  'Business',
+  'Motivation',
+  'AI',
+  'Technology',
+  'Gaming',
+  'Space',
+  'Science',
+  'Crime',
+  'Health',
+  'Fitness',
+  'Education',
+  'News',
+  'Politics',
+  'Entertainment',
+  'Other',
+];
+
 export async function classifyVideo(videoId: number): Promise<AIClassificationResult> {
   const res = await apiFetch(`${getApiBase()}/videos/${videoId}/classify`, {
     method: 'POST',

@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.models import AIClassification, Channel, ChannelSnapshot, Video, VideoSnapshot
 from app.services.format_classifier import CLASSIFIER_VERSION, classify_video
 from app.services.metrics import calculate_video_score
+from app.services.niche_classifier import NICHE_CLASSIFIER_VERSION, classify_niche
 from app.services.quota import log_quota_usage
 from app.utils import extract_channel_ref, parse_iso8601_duration_seconds
 from app.youtube.client import YouTubeClient
@@ -244,6 +245,9 @@ def sync_channel_videos(
         existing.is_faceless_friendly = result["is_faceless_friendly"]
         existing.is_ai_friendly = result["is_ai_friendly"]
         existing.raw = result
+
+        niche_result = classify_niche(video.title, video.description, channel.title, result["format_label"])
+        existing.niche_label = niche_result["niche_label"]
         db.flush()
 
         if is_match:

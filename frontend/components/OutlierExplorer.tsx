@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getOutliers, classifyOutliers, classifyVideo, FORMAT_OPTIONS } from '../lib/api';
+import { getOutliers, classifyOutliers, classifyVideo, FORMAT_OPTIONS, NICHE_OPTIONS } from '../lib/api';
 import type { Outlier, OutlierFilters } from '../lib/api';
 import { formatNumber, formatViewsPerDay, formatSubscribers, formatCompact } from '../lib/format';
 
@@ -335,13 +335,16 @@ export default function OutlierExplorer() {
           </div>
           <div className="filter-item">
             <label className="filter-label">Ниша</label>
-            <input
-              className="input"
-              type="text"
-              placeholder="Например: технологии"
+            <select
+              className="select"
               value={nicheLabel}
               onChange={e => setNicheLabel(e.target.value)}
-            />
+            >
+              <option value="">Все ниши</option>
+              {NICHE_OPTIONS.map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
           </div>
           <div className="filter-item">
             <label className="filter-label">Faceless</label>
