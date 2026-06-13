@@ -68,12 +68,25 @@ export type ChannelImportResult = {
   channels: Channel[];
 };
 
+export type ScanOptions = {
+  limit?: number;
+  minViews?: number;
+  maxViews?: number;
+  minViewsPerDay?: number;
+  maxViewsPerDay?: number;
+  publishedAfter?: string;
+  publishedBefore?: string;
+  stopAfterMatches?: number;
+  saveSkipped?: boolean;
+};
+
 export type SyncResponse = {
   task_run_id: number;
   task_id: string;
   channel_id: number;
   status: string;
   requested_limit?: number;
+  scan_options?: Record<string, unknown>;
 };
 
 export type SyncAllResponse = {
@@ -81,6 +94,7 @@ export type SyncAllResponse = {
   tasks: SyncResponse[];
   requested_limit?: number;
   max_channels?: number;
+  scan_options?: Record<string, unknown>;
 };
 
 export function getApiBase(): string {
@@ -194,9 +208,22 @@ export async function importChannelsCsv(file: File): Promise<ChannelImportResult
   return res.json();
 }
 
-export async function syncChannel(channelId: number, limit?: number): Promise<SyncResponse> {
+function buildSyncParams(opts: ScanOptions): URLSearchParams {
   const params = new URLSearchParams();
-  if (limit != null) params.set('limit', String(limit));
+  if (opts.limit != null) params.set('limit', String(opts.limit));
+  if (opts.minViews != null) params.set('min_views', String(opts.minViews));
+  if (opts.maxViews != null) params.set('max_views', String(opts.maxViews));
+  if (opts.minViewsPerDay != null) params.set('min_views_per_day', String(opts.minViewsPerDay));
+  if (opts.maxViewsPerDay != null) params.set('max_views_per_day', String(opts.maxViewsPerDay));
+  if (opts.publishedAfter) params.set('published_after', opts.publishedAfter);
+  if (opts.publishedBefore) params.set('published_before', opts.publishedBefore);
+  if (opts.stopAfterMatches != null) params.set('stop_after_matches', String(opts.stopAfterMatches));
+  if (opts.saveSkipped != null) params.set('save_skipped', String(opts.saveSkipped));
+  return params;
+}
+
+export async function syncChannel(channelId: number, scanOptions?: ScanOptions): Promise<SyncResponse> {
+  const params = buildSyncParams(scanOptions ?? {});
   const qs = params.toString();
   const res = await apiFetch(`${getApiBase()}/channels/${channelId}/sync${qs ? '?' + qs : ''}`, {
     method: 'POST',
@@ -208,9 +235,8 @@ export async function syncChannel(channelId: number, limit?: number): Promise<Sy
   return res.json();
 }
 
-export async function syncAllChannels(limit?: number, maxChannels?: number): Promise<SyncAllResponse> {
-  const params = new URLSearchParams();
-  if (limit != null) params.set('limit', String(limit));
+export async function syncAllChannels(scanOptions?: ScanOptions, maxChannels?: number): Promise<SyncAllResponse> {
+  const params = buildSyncParams(scanOptions ?? {});
   if (maxChannels != null) params.set('max_channels', String(maxChannels));
   const qs = params.toString();
   const res = await apiFetch(`${getApiBase()}/channels/sync-all${qs ? '?' + qs : ''}`, {

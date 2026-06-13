@@ -26,6 +26,12 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   classify_channel: 'Классификация канала',
 };
 
+const STOPPED_REASON_LABELS: Record<string, string> = {
+  limit_reached: 'достигнут лимит',
+  no_more_videos: 'видео закончились',
+  stop_after_matches_reached: 'найдено достаточно видео',
+};
+
 function formatTaskType(type: string): string {
   return TASK_TYPE_LABELS[type] ?? type;
 }
@@ -59,6 +65,11 @@ export default function TaskList() {
     }
   };
 
+  const stoppedReasonLabel = (reason: string | null | undefined): string => {
+    if (!reason) return '';
+    return STOPPED_REASON_LABELS[reason] ?? reason;
+  };
+
   return (
     <div className="task-list-section">
       <div className="task-list-header">
@@ -82,12 +93,12 @@ export default function TaskList() {
               <th>Канал</th>
               <th>Запущена</th>
               <th>Завершена</th>
-              <th>Ошибка</th>
+              <th>Результат</th>
             </tr>
           </thead>
           <tbody>
             {tasks.map(t => {
-              const r = t.result as Record<string, number> | null;
+              const r = t.result as Record<string, unknown> | null;
               return (
               <tr key={t.id}>
                 <td>{formatTaskType(t.task_type)}</td>
@@ -104,9 +115,11 @@ export default function TaskList() {
                     <span className="task-error" title={t.error}>{t.error.length > 60 ? t.error.slice(0, 60) + '…' : t.error}</span>
                   ) : t.task_type === 'sync_channel' && r ? (
                     <div className="task-meta">
-                      {r.requested_limit != null && <span className="meta-item">Запрошено видео: {r.requested_limit}</span>}
-                      {r.fetched_video_ids != null && <span className="meta-item">Получено видео: {r.fetched_video_ids}</span>}
-                      {r.scores_calculated != null && <span className="meta-item">Скорингов рассчитано: {r.scores_calculated}</span>}
+                      {r.scanned_video_ids != null && <span className="meta-item">Просканировано видео: {String(r.scanned_video_ids)}</span>}
+                      {r.matched_candidates != null && <span className="meta-item">Подошло под фильтр: {String(r.matched_candidates)}</span>}
+                      {r.skipped_by_filters != null && <span className="meta-item">Пропущено фильтрами: {String(r.skipped_by_filters)}</span>}
+                      {r.stopped_reason != null && <span className="meta-item">Причина остановки: {stoppedReasonLabel(String(r.stopped_reason))}</span>}
+                      {r.scores_calculated != null && <span className="meta-item">Скорингов рассчитано: {String(r.scores_calculated)}</span>}
                     </div>
                   ) : '—'}
                 </td>

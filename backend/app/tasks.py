@@ -42,15 +42,18 @@ def update_task_status(
 
 
 @celery_app.task(name="sync_channel", bind=True, max_retries=3, default_retry_delay=60)
-def sync_channel_task(self, task_run_id: int, channel_id: int, limit: int | None = None) -> dict[str, Any]:
+def sync_channel_task(self, task_run_id: int, channel_id: int, scan_options: dict | None = None) -> dict[str, Any]:
     update_task_status(task_run_id, status="running")
     db = SessionLocal()
     try:
-        result = sync_channel_videos(db, channel_id, limit=limit, related_task_id=task_run_id)
+        if scan_options is None:
+            scan_options = {"limit": settings.default_sync_limit, "save_skipped": True}
+        result = sync_channel_videos(db, channel_id, scan_options=scan_options, related_task_id=task_run_id)
         channel = db.get(Channel, channel_id)
-        result["requested_limit"] = limit or settings.default_sync_limit
+        result["requested_limit"] = scan_options.get("limit", settings.default_sync_limit)
         result["channel_title"] = channel.title if channel else None
         result["youtube_channel_id"] = channel.youtube_channel_id if channel else None
+        result["scan_options"] = scan_options
         update_task_status(task_run_id, status="success", result=result)
         return result
     except Exception as exc:

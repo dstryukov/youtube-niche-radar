@@ -34,6 +34,50 @@ def _best_thumbnail(snippet: dict[str, Any]) -> str | None:
     return None
 
 
+def _is_candidate_match(item: dict[str, Any], scan_options: dict) -> bool:
+    """Check if a video item (from YouTube videos.list response) matches scan filters."""
+    statistics = item.get("statistics", {})
+    snippet = item.get("snippet", {})
+    latest_views = _int_or_none(statistics.get("viewCount"))
+    published_at_str = snippet.get("publishedAt")
+
+    min_views = scan_options.get("min_views")
+    max_views = scan_options.get("max_views")
+    min_views_per_day = scan_options.get("min_views_per_day")
+    max_views_per_day = scan_options.get("max_views_per_day")
+    published_after = scan_options.get("published_after")
+    published_before = scan_options.get("published_before")
+
+    if min_views is not None and (latest_views is None or latest_views < min_views):
+        return False
+    if max_views is not None and (latest_views is None or latest_views > max_views):
+        return False
+    if (min_views_per_day is not None or max_views_per_day is not None) and published_at_str and latest_views is not None:
+        published = isoparse(published_at_str)
+        days_since = max((datetime.now(UTC) - published).days, 1)
+        vpd = latest_views / days_since
+        if min_views_per_day is not None and vpd < min_views_per_day:
+            return False
+        if max_views_per_day is not None and vpd > max_views_per_day:
+            return False
+    if published_after is not None and published_at_str:
+        if isoparse(published_at_str) < isoparse(published_after):
+            return False
+    if published_before is not None and published_at_str:
+        if isoparse(published_at_str) > isoparse(published_before):
+            return False
+    return True
+
+
+def _stopped_reason_label(reason: str) -> str:
+    mapping = {
+        "limit_reached": "limit_reached",
+        "no_more_videos": "no_more_videos",
+        "stop_after_matches_reached": "stop_after_matches_reached",
+    }
+    return mapping.get(reason, reason)
+
+
 def upsert_channel_from_youtube(
     db: Session,
     *,
@@ -92,15 +136,19 @@ def sync_channel_videos(
     db: Session,
     channel_db_id: int,
     *,
-    limit: int | None = None,
+    scan_options: dict | None = None,
     related_task_id: int | None = None,
-) -> dict[str, int]:
-    limit = limit or settings.sync_recent_video_limit
+) -> dict[str, int | str]:
+    if scan_options is None:
+        scan_options = {"limit": settings.sync_recent_video_limit, "save_skipped": True}
+    limit = scan_options.get("limit", settings.sync_recent_video_limit)
+    save_skipped = scan_options.get("save_skipped", True)
+    stop_after_matches = scan_options.get("stop_after_matches")
+
     channel = db.get(Channel, channel_db_id)
     if channel is None:
         raise ValueError("Channel not found")
 
-    # Refresh channel metadata first, so subscriber_count and uploads_playlist_id are fresh.
     channel = upsert_channel_from_youtube(
         db, channel_id=channel.youtube_channel_id, related_task_id=related_task_id
     )
@@ -123,12 +171,23 @@ def sync_channel_videos(
     upserted = 0
     updated = 0
     snapshots = 0
+    matched_candidates = 0
+    skipped_by_filters = 0
+    stopped_reason = "no_more_videos"
+
     for item in video_items:
         snippet = item.get("snippet", {})
         statistics = item.get("statistics", {})
         content_details = item.get("contentDetails", {})
 
         youtube_video_id = item["id"]
+
+        is_match = _is_candidate_match(item, scan_options)
+
+        if not is_match and not save_skipped:
+            skipped_by_filters += 1
+            continue
+
         video = db.scalar(select(Video).where(Video.youtube_video_id == youtube_video_id))
         if video is None:
             video = Video(
@@ -165,7 +224,26 @@ def sync_channel_videos(
         snapshots += 1
         calculate_video_score(db, video)
 
+        if is_match:
+            matched_candidates += 1
+        else:
+            skipped_by_filters += 1
+
+        if stop_after_matches is not None and matched_candidates >= stop_after_matches:
+            stopped_reason = "stop_after_matches_reached"
+            break
+
     db.commit()
+
+    if len(video_ids) <= limit and stopped_reason == "no_more_videos":
+        if stop_after_matches is not None and matched_candidates >= stop_after_matches:
+            pass  # already set above
+        else:
+            stopped_reason = "no_more_videos"
+
+    if stopped_reason == "no_more_videos" and len(video_ids) >= limit:
+        stopped_reason = "limit_reached"
+
     return {
         "videos_found": len(video_ids),
         "fetched_video_ids": len(video_ids),
@@ -175,6 +253,11 @@ def sync_channel_videos(
         "snapshots_created": snapshots,
         "video_snapshots_created": snapshots,
         "scores_calculated": snapshots,
+        "scanned_video_ids": len(video_ids),
+        "videos_with_statistics": len(video_items),
+        "matched_candidates": matched_candidates,
+        "skipped_by_filters": skipped_by_filters,
+        "stopped_reason": stopped_reason,
         "youtube_quota_units": 1 + playlist_requests + video_requests,
     }
 
@@ -193,7 +276,6 @@ def import_channels_from_csv(db: Session, csv_text: str) -> dict[str, Any]:
         "handle",
         "url",
     }:
-        # csv.DictReader treats the first plain value as the header. Re-parse as a single-column file.
         values = [line.strip() for line in csv_text.splitlines() if line.strip()]
         rows = [{"value": value} for value in values]
     else:
@@ -206,7 +288,6 @@ def import_channels_from_csv(db: Session, csv_text: str) -> dict[str, Any]:
 
     for idx, row in enumerate(rows, start=1):
         raw_ref = (row.get("channel_id") or row.get("handle") or row.get("url") or row.get("value") or "").strip()
-        # Skip completely empty rows
         if not raw_ref:
             skipped += 1
             continue

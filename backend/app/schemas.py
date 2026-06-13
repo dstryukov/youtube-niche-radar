@@ -45,6 +45,7 @@ class SyncResponse(BaseModel):
     channel_id: int
     status: str = "pending"
     requested_limit: int | None = None
+    scan_options: dict[str, Any] | None = None
 
 
 class SyncAllResponse(BaseModel):
@@ -52,6 +53,7 @@ class SyncAllResponse(BaseModel):
     tasks: list[SyncResponse]
     requested_limit: int | None = None
     max_channels: int | None = None
+    scan_options: dict[str, Any] | None = None
 
 
 class TaskRunRead(BaseModel):
