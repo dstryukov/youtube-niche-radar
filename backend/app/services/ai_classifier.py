@@ -1,14 +1,57 @@
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models import AIClassification, Format, Niche, Video
+from app.services.llm_client import get_llm_client
 from app.services.metrics import calculate_video_score
 
-PROMPT_VERSION = "format-v2"
+logger = logging.getLogger(__name__)
+
+PROMPT_VERSION = settings.llm_prompt_version
+
+CLASSIFICATION_SYSTEM_PROMPT = """Ты — анализатор YouTube-контента. Классифицируй видео по формату, нише и характеристикам.
+
+Доступные форматы (выбери ОДИН):
+reddit_story — чтение и обсуждение историй с Reddit
+ai_story — истории, сгенерированные или озвученные AI
+true_crime — разбор реальных преступлений
+top_10 — списки "Топ 10 ..."
+quiz — викторины, тесты, опросы
+before_after — трансформации, сравнение до/после
+history — исторические факты, разборы
+finance — финансы, инвестиции, личный бюджет
+reaction — реакция на видео/события
+facts — факты, подборки, образовательный контент
+tutorial / guide — Step-by-step educational format
+mistakes / lessons — List of errors, lessons learned
+review / comparison — Product, tool, or concept comparison
+experiment / challenge — Personal experiment or challenge
+case study / explainer — Narrative breakdown
+unknown / needs AI — Fallback
+
+Доступные ниши (выбери ОДНУ):
+AI tools, business / money, health / fitness, gaming, history, unknown
+
+Ответь ТОЛЬКО валидным JSON без markdown:
+{
+  "format_label": "...",
+  "niche_label": "...",
+  "hook_type": "...",
+  "target_audience": "...",
+  "is_faceless_friendly": true/false,
+  "is_ai_friendly": true/false,
+  "repeatability_score": 0.0-1.0,
+  "adaptation_ideas": ["...", "..."],
+  "confidence": 0.0-1.0,
+  "rationale": "..."
+}"""
 
 
 @dataclass(frozen=True)
@@ -128,18 +171,58 @@ def _get_or_create_niche(db: Session, result: ClassificationResult) -> Niche:
     return row
 
 
-def save_classification(db: Session, video: Video, result: ClassificationResult) -> AIClassification:
+def classify_video_llm(
+    video: Video,
+    provider: str | None = None,
+    model: str | None = None,
+) -> tuple[ClassificationResult, str]:
+    resolved_model = model or settings.llm_model
+    user_prompt = f"Title: {video.title}\nDescription: {video.description or ''}\nDuration: {video.duration_seconds or 0} seconds"
+    client = get_llm_client(provider=provider, model=model)
+    try:
+        result = client.chat_structured(
+            system_prompt=CLASSIFICATION_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            response_model=None,
+        )
+        parsed = json.loads(result["content"])
+        return (
+            ClassificationResult(
+                format_label=parsed.get("format_label", "unknown / needs AI"),
+                niche_label=parsed.get("niche_label", "unknown"),
+                hook_type=parsed.get("hook_type"),
+                target_audience=parsed.get("target_audience"),
+                is_faceless_friendly=parsed.get("is_faceless_friendly"),
+                is_ai_friendly=parsed.get("is_ai_friendly"),
+                repeatability_score=float(parsed.get("repeatability_score", 0.0)),
+                adaptation_ideas=parsed.get("adaptation_ideas", []),
+                confidence=float(parsed.get("confidence", 0.0)),
+                rationale=parsed.get("rationale", ""),
+            ),
+            resolved_model,
+        )
+    except Exception:
+        logger.warning("LLM classification failed for video %s, falling back to stub", video.id)
+        return classify_video_stub(video), "stub"
+
+
+def save_classification(
+    db: Session,
+    video: Video,
+    result: ClassificationResult,
+    model_name: str = "stub",
+) -> AIClassification:
     fmt = _get_or_create_format(db, result)
     niche = _get_or_create_niche(db, result)
     row = db.scalar(
         select(AIClassification).where(
             AIClassification.video_id == video.id,
-            AIClassification.model == "stub",
+            AIClassification.model == model_name,
             AIClassification.prompt_version == PROMPT_VERSION,
         )
     )
     if row is None:
-        row = AIClassification(video_id=video.id, model="stub", prompt_version=PROMPT_VERSION)
+        row = AIClassification(video_id=video.id, model=model_name, prompt_version=PROMPT_VERSION)
         db.add(row)
 
     row.format_id = fmt.id
@@ -162,5 +245,11 @@ def save_classification(db: Session, video: Video, result: ClassificationResult)
     return row
 
 
-def classify_and_save_video(db: Session, video: Video) -> AIClassification:
-    return save_classification(db, video, classify_video_stub(video))
+def classify_and_save_video(
+    db: Session,
+    video: Video,
+    provider: str | None = None,
+    model: str | None = None,
+) -> AIClassification:
+    result, model_name = classify_video_llm(video, provider=provider, model=model)
+    return save_classification(db, video, result, model_name=model_name)

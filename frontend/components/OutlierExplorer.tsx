@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { getOutliers } from '../lib/api';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { getOutliers, classifyOutliers, classifyVideo } from '../lib/api';
 import type { Outlier, OutlierFilters } from '../lib/api';
 import { formatNumber, formatViewsPerDay, formatSubscribers, formatCompact } from '../lib/format';
 
@@ -45,6 +45,16 @@ export default function OutlierExplorer() {
   const [maxViewsPerDay, setMaxViewsPerDay] = useState('');
   const [publishedAfter, setPublishedAfter] = useState('');
   const [publishedBefore, setPublishedBefore] = useState('');
+
+  const [classifying, setClassifying] = useState(false);
+  const [classifyMsg, setClassifyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const classifyMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showClassifyMsg = (type: 'success' | 'error', text: string) => {
+    setClassifyMsg({ type, text });
+    if (classifyMsgTimer.current) clearTimeout(classifyMsgTimer.current);
+    classifyMsgTimer.current = setTimeout(() => setClassifyMsg(null), 6000);
+  };
 
   const fetchData = useCallback(async (filters: OutlierFilters) => {
     setLoading(true);
@@ -139,6 +149,31 @@ export default function OutlierExplorer() {
     setPublishedAfter('');
     setPublishedBefore('');
     fetchData(DEFAULT_FILTERS);
+  };
+
+  const handleClassify = async () => {
+    setClassifying(true);
+    showClassifyMsg('success', '');
+    try {
+      const score = minScore ? parseFloat(minScore) : 0.3;
+      const result = await classifyOutliers(isNaN(score) ? 0.3 : score, 50);
+      showClassifyMsg('success', `Классифицировано видео: ${result.length}`);
+      fetchData(buildFilters());
+    } catch (e) {
+      showClassifyMsg('error', e instanceof Error ? e.message : 'Ошибка классификации');
+    } finally {
+      setClassifying(false);
+    }
+  };
+
+  const handleClassifyVideo = async (videoId: number) => {
+    try {
+      await classifyVideo(videoId);
+      showClassifyMsg('success', 'Видео классифицировано');
+      fetchData(buildFilters());
+    } catch (e) {
+      showClassifyMsg('error', e instanceof Error ? e.message : 'Ошибка классификации видео');
+    }
   };
 
   const fillAndApply = (overrides: Partial<OutlierFilters>) => {
@@ -347,6 +382,9 @@ export default function OutlierExplorer() {
             <div className="filter-btn-row">
               <button className="btn btn-primary" onClick={handleApply}>Применить</button>
               <button className="btn btn-secondary" onClick={handleReset}>Сбросить</button>
+              <button className="btn btn-accent btn-sm" onClick={handleClassify} disabled={classifying}>
+                {classifying ? '…' : 'Классифицировать'}
+              </button>
             </div>
           </div>
         </div>
@@ -367,6 +405,11 @@ export default function OutlierExplorer() {
       </div>
 
       <div className="outlier-results">
+        {classifyMsg && classifyMsg.text && (
+          <div className={`message message-${classifyMsg.type}`} style={{ margin: '12px 20px 0' }}>
+            {classifyMsg.text}
+          </div>
+        )}
         {loading ? (
           <div className="outlier-loading">
             <div className="spinner" />
@@ -417,16 +460,31 @@ export default function OutlierExplorer() {
                         <div className="format-cell">
                           <span className="badge badge-format">{item.classification.format_label}</span>
                           <div className="format-badges">
+                            {item.classification.model === 'stub' ? (
+                              <span className="badge badge-gray badge-sm" title="Правила (rule-based)">
+                                Stub
+                              </span>
+                            ) : item.classification.model ? (
+                              <span className="badge badge-purple badge-sm" title={`Модель: ${item.classification.model} · Уверенность: ${item.classification.confidence ?? '?'}`}>
+                                AI
+                              </span>
+                            ) : null}
                             {item.classification.is_faceless_friendly === true && (
                               <span className="badge badge-gray badge-sm">Faceless</span>
                             )}
                             {item.classification.is_ai_friendly === true && (
-                              <span className="badge badge-purple badge-sm">AI</span>
+                              <span className="badge badge-purple badge-sm">AI-friendly</span>
                             )}
                           </div>
                         </div>
                       ) : (
-                        <span className="unclassified">Не определён</span>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={() => handleClassifyVideo(item.video_id)}
+                          style={{ fontSize: '11px', padding: '2px 8px' }}
+                        >
+                          Клас.
+                        </button>
                       )}
                     </td>
                     <td>

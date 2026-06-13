@@ -182,6 +182,8 @@ def classify_outliers(
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=500),
     min_outlier_score: float = Query(default=0.3),
+    provider: str | None = Query(default=None, description="groq | gemini"),
+    model: str | None = Query(default=None, description="Override LLM model"),
 ) -> list[AIClassification]:
     videos = list(
         db.scalars(
@@ -192,4 +194,4 @@ def classify_outliers(
             .limit(limit)
         ).all()
     )
-    return [classify_and_save_video(db, video) for video in videos]
+    return [classify_and_save_video(db, video, provider=provider, model=model) for video in videos]

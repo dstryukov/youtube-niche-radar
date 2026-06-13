@@ -4,10 +4,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from celery import Celery
+from sqlalchemy import desc, select
 
 from app.core.config import settings
 from app.db.session import SessionLocal
-from app.models import Channel, TaskRun
+from app.models import Channel, TaskRun, Video, VideoScore
+from app.services.ai_classifier import classify_and_save_video
 from app.services.ingest import sync_channel_videos
 
 celery_app = Celery("youtube_niche_radar", broker=settings.redis_url, backend=settings.redis_url)
@@ -64,5 +66,43 @@ def sync_channel_task(self, task_run_id: int, channel_id: int, scan_options: dic
         except Exception as retry_exc:
             update_task_status(task_run_id, status="failed", error=f"Failed after retries: {retry_exc}")
             raise
+    finally:
+        db.close()
+
+
+@celery_app.task(name="classify_outliers", bind=True, max_retries=2)
+def classify_outliers_task(
+    self,
+    min_outlier_score: float = 0.3,
+    limit: int = 50,
+    provider: str | None = None,
+    model: str | None = None,
+) -> dict[str, Any]:
+    """Classifies all unclassified anomalies with outlier_score >= min_outlier_score.
+
+    If provider/model are specified, temporarily overrides settings.
+    """
+    db = SessionLocal()
+    try:
+        videos = list(
+            db.scalars(
+                select(Video)
+                .join(VideoScore, VideoScore.video_id == Video.id)
+                .where(VideoScore.outlier_score >= min_outlier_score)
+                .order_by(desc(VideoScore.outlier_score))
+                .limit(limit)
+            ).all()
+        )
+        classified = 0
+        failed = 0
+        for video in videos:
+            try:
+                classify_and_save_video(db, video, provider=provider, model=model)
+                classified += 1
+            except Exception:
+                failed += 1
+        return {"classified": classified, "failed": failed, "total": len(videos)}
+    except Exception as exc:
+        raise self.retry(exc=exc)
     finally:
         db.close()

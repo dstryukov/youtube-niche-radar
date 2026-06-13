@@ -27,6 +27,9 @@ export type Outlier = {
     is_faceless_friendly: boolean | null;
     is_ai_friendly: boolean | null;
     repeatability_score: number | null;
+    confidence: number | null;
+    rationale: string | null;
+    model: string | null;
   };
   channel_avg_views?: number;
   channel_median_views?: number;
@@ -276,6 +279,97 @@ export async function getTasks(limit?: number): Promise<TaskRun[]> {
 export async function getFormatStats(): Promise<FormatStats[]> {
   const res = await apiFetch(`${getApiBase()}/analytics/formats`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Не удалось загрузить статистику форматов');
+  return res.json();
+}
+
+export type FormatSummary = {
+  format_label: string;
+  videos: number;
+  avg_outlier_score: number | null;
+  avg_views: number | null;
+  faceless_count: number;
+  ai_friendly_count: number;
+};
+
+export type FormatDetail = {
+  format_label: string;
+  description: string | null;
+  is_faceless_friendly: boolean | null;
+  is_ai_friendly: boolean | null;
+  repeatability_prior: number | null;
+  videos_count: number;
+  avg_views: number | null;
+  median_views: number | null;
+  max_views: number | null;
+  avg_outlier_score: number | null;
+  avg_repeatability: number | null;
+  trend: number | null;
+  top_channels: Array<{ channel_title: string; videos_count: number }>;
+};
+
+export type TrendingFormat = {
+  format_label: string;
+  video_count: number;
+  growth_rate: number;
+  avg_views: number | null;
+};
+
+export async function getFormats(): Promise<FormatSummary[]> {
+  const res = await apiFetch(`${getApiBase()}/analytics/formats`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить список форматов');
+  return res.json();
+}
+
+export async function getTrendingFormats(periodDays = 30): Promise<TrendingFormat[]> {
+  const res = await apiFetch(`${getApiBase()}/analytics/formats/trending?period_days=${periodDays}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить тренды форматов');
+  return res.json();
+}
+
+export async function getFormatDetail(label: string, periodDays = 30): Promise<FormatDetail> {
+  const res = await apiFetch(`${getApiBase()}/analytics/formats/${encodeURIComponent(label)}?period_days=${periodDays}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить детали формата');
+  return res.json();
+}
+
+export type AIClassificationResult = {
+  format_label: string | null;
+  niche_label: string | null;
+  hook_type: string | null;
+  target_audience: string | null;
+  is_faceless_friendly: boolean | null;
+  is_ai_friendly: boolean | null;
+  repeatability_score: number | null;
+  adaptation_ideas: string[] | null;
+  confidence: number | null;
+  rationale: string | null;
+};
+
+export async function classifyOutliers(
+  minOutlierScore = 0.3,
+  limit = 50,
+  provider?: string,
+  model?: string,
+): Promise<AIClassificationResult[]> {
+  const params = new URLSearchParams();
+  params.set('min_outlier_score', String(minOutlierScore));
+  params.set('limit', String(limit));
+  if (provider) params.set('provider', provider);
+  if (model) params.set('model', model);
+  const res = await apiFetch(`${getApiBase()}/videos/classify-outliers?${params}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Не удалось классифицировать аномалии');
+  return res.json();
+}
+
+export async function classifyVideo(videoId: number): Promise<AIClassificationResult> {
+  const res = await apiFetch(`${getApiBase()}/videos/${videoId}/classify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Не удалось классифицировать видео');
   return res.json();
 }
 

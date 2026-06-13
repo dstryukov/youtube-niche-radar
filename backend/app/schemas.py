@@ -84,6 +84,7 @@ class AIClassificationRead(BaseModel):
     adaptation_ideas: list[str] | None = None
     confidence: float | None = None
     rationale: str | None = None
+    model: str | None = None
 
     model_config = {"from_attributes": True}
 
