@@ -18,8 +18,14 @@ migrate-indexes:
 seed:
 	docker compose exec db psql -U radar -d radar -f /migrations/002_seed_formats.sql
 
-# Fresh database setup: core schema + upgrade + indexes + seed
-migrate-all: migrate migrate-upgrade migrate-indexes seed
+seed-more:
+	docker compose exec db psql -U radar -d radar -f /migrations/005_seed_more_formats.sql
+
+migrate-format:
+	docker compose exec db psql -U radar -d radar -f /migrations/006_add_classifier_version.sql
+
+# Fresh database setup: core schema + upgrade + indexes + seeds + format migration
+migrate-all: migrate migrate-upgrade migrate-indexes seed seed-more migrate-format
 
 api:
 	docker compose up api
