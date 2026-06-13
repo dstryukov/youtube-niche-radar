@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.analytics import router as analytics_router
 from app.api.routes.channels import router as channels_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.tasks import router as tasks_router
@@ -17,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(analytics_router)
 app.include_router(channels_router)
 app.include_router(videos_router)
 app.include_router(tasks_router)

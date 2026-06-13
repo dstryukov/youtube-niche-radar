@@ -386,7 +386,8 @@ export default function OutlierExplorer() {
                   <th>Канал</th>
                   <th>Просмотры</th>
                   <th>Скоринг</th>
-                  <th>Формат / Признаки</th>
+                  <th>Формат</th>
+                  <th>Признаки</th>
                   <th>Почему аномалия</th>
                 </tr>
               </thead>
@@ -412,17 +413,28 @@ export default function OutlierExplorer() {
                       <span className="sub-row">Score: <strong>{item.outlier_score != null ? formatNumber(item.outlier_score, 2) : '—'}</strong></span>
                     </td>
                     <td>
+                      {item.classification && item.classification.format_label ? (
+                        <div className="format-cell">
+                          <span className="badge badge-format">{item.classification.format_label}</span>
+                          <div className="format-badges">
+                            {item.classification.is_faceless_friendly === true && (
+                              <span className="badge badge-gray badge-sm">Faceless</span>
+                            )}
+                            {item.classification.is_ai_friendly === true && (
+                              <span className="badge badge-purple badge-sm">AI</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="unclassified">Не определён</span>
+                      )}
+                    </td>
+                    <td>
                       {item.classification ? (
                         <>
-                          <span className="badge">{item.classification.format_label ?? 'Формат не указан'}</span>
                           {item.classification.niche_label && (
                             <span className="sub-row">{item.classification.niche_label}</span>
                           )}
-                          <span className="sub-row">
-                            {featureLabel(item.classification.is_faceless_friendly, 'Faceless', 'Не faceless')}
-                            {' · '}
-                            {featureLabel(item.classification.is_ai_friendly, 'AI-friendly', 'Не AI')}
-                          </span>
                         </>
                       ) : (
                         <span className="unclassified">Ещё не классифицирован</span>

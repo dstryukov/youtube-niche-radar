@@ -133,6 +133,13 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   return response.json();
 }
 
+export type FormatStats = {
+  format_label: string;
+  videos: number;
+  avg_outlier_score: number | null;
+  avg_views: number | null;
+};
+
 export type OutlierFilters = {
   minOutlierScore?: number;
   smallChannelBreakout?: boolean;
@@ -263,6 +270,12 @@ export async function getTasks(limit?: number): Promise<TaskRun[]> {
     const body = await res.json().catch(() => null);
     throw new Error(extractDetail(body) ?? 'Не удалось загрузить список задач');
   }
+  return res.json();
+}
+
+export async function getFormatStats(): Promise<FormatStats[]> {
+  const res = await apiFetch(`${getApiBase()}/analytics/formats`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить статистику форматов');
   return res.json();
 }
 

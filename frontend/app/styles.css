@@ -166,6 +166,23 @@ h1 { font-size: 36px; line-height: 1.1; margin: 0 0 6px; }
 /* Task list header */
 .task-list-header { display: flex; justify-content: flex-end; padding: 12px 20px; border-bottom: 1px solid #eaecf0; }
 
+/* Navigation */
+.nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #fff; border-bottom: 1px solid #eaecf0; }
+.nav-logo { font-weight: 700; font-size: 16px; color: #101828; }
+.nav-links { display: flex; gap: 16px; }
+.nav-link { font-size: 14px; color: #475467; font-weight: 500; }
+.nav-link:hover { color: #101828; }
+
+/* Format badges */
+.badge-format { background: #f0f9ff; color: #026aa2; }
+.badge-sm { font-size: 10px; padding: 1px 6px; }
+.format-cell { display: flex; flex-direction: column; gap: 4px; }
+.format-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Analytics table */
+.analytics-table th, .analytics-table td { padding: 12px 20px; }
+.analytics-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 /* Explain block */
 .explain-block { font-size: 12px; line-height: 1.6; color: #475467; min-width: 160px; }
 .explain-line { white-space: nowrap; }

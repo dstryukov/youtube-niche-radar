@@ -9,7 +9,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <nav className="nav-bar">
+          <a href="/" className="nav-logo">YouTube Niche Radar</a>
+          <div className="nav-links">
+            <a href="/" className="nav-link">Главная</a>
+            <a href="/analytics/formats" className="nav-link">Форматы</a>
+          </div>
+        </nav>
+        {children}
+      </body>
     </html>
   );
 }

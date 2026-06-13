@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import Channel, ChannelSnapshot, Video, VideoSnapshot
+from app.models import AIClassification, Channel, ChannelSnapshot, Video, VideoSnapshot
+from app.services.format_classifier import CLASSIFIER_VERSION, classify_video
 from app.services.metrics import calculate_video_score
 from app.services.quota import log_quota_usage
 from app.utils import extract_channel_ref, parse_iso8601_duration_seconds
@@ -223,6 +224,27 @@ def sync_channel_videos(
         )
         snapshots += 1
         calculate_video_score(db, video)
+
+        result = classify_video(video.title, video.description, channel.title)
+        existing = db.scalar(
+            select(AIClassification).where(
+                AIClassification.video_id == video.id,
+                AIClassification.model == CLASSIFIER_VERSION,
+                AIClassification.prompt_version == "v1",
+            )
+        )
+        if existing is None:
+            existing = AIClassification(
+                video_id=video.id,
+                model=CLASSIFIER_VERSION,
+                prompt_version="v1",
+            )
+            db.add(existing)
+        existing.format_label = result["format_label"]
+        existing.is_faceless_friendly = result["is_faceless_friendly"]
+        existing.is_ai_friendly = result["is_ai_friendly"]
+        existing.raw = result
+        db.flush()
 
         if is_match:
             matched_candidates += 1
