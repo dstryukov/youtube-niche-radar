@@ -1,6 +1,7 @@
 import { getDashboardSummary } from '../lib/api';
 import { formatNumber } from '../lib/format';
 import ChannelManager from '../components/ChannelManager';
+import FormatDashboard from '../components/FormatDashboard';
 import TaskList from '../components/TaskList';
 import OutlierExplorer from '../components/OutlierExplorer';
 
@@ -33,6 +34,11 @@ export default async function Page() {
             <ErrorCard label="Средняя аномальность" hint="Не удалось загрузить" />
           </>
         )}
+      </section>
+
+      <section className="panel">
+        <h2>Каталог форматов</h2>
+        <FormatDashboard />
       </section>
 
       <section className="panel">

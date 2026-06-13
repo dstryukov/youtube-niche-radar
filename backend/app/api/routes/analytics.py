@@ -1,41 +1,34 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import desc, func, select
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models import AIClassification, Video, VideoScore
+from app.services.format_analytics import get_format_catalog, get_format_details, get_trending_formats
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("/formats")
-def format_statistics(db: Session = Depends(get_db)) -> list[dict]:
-    stmt = (
-        select(
-            AIClassification.format_label,
-            func.count(AIClassification.id).label("videos"),
-            func.avg(VideoScore.outlier_score).label("avg_outlier_score"),
-            func.avg(VideoScore.latest_views).label("avg_views"),
-        )
-        .join(Video, Video.id == AIClassification.video_id)
-        .join(VideoScore, VideoScore.video_id == Video.id)
-        .where(
-            AIClassification.model == "rule_v1",
-            AIClassification.format_label.isnot(None),
-        )
-        .group_by(AIClassification.format_label)
-        .order_by(desc("videos"))
-    )
+def format_catalog(db: Session = Depends(get_db)) -> list[dict]:
+    return get_format_catalog(db)
 
-    rows = db.execute(stmt).all()
-    return [
-        {
-            "format_label": row.format_label,
-            "videos": row.videos,
-            "avg_outlier_score": round(row.avg_outlier_score, 2) if row.avg_outlier_score is not None else None,
-            "avg_views": round(row.avg_views) if row.avg_views is not None else None,
-        }
-        for row in rows
-    ]
+
+@router.get("/formats/trending")
+def trending_formats(
+    db: Session = Depends(get_db),
+    period_days: int = Query(default=30, ge=7, le=365),
+) -> list[dict]:
+    return get_trending_formats(db, period_days)
+
+
+@router.get("/formats/{label:path}")
+def format_detail(
+    label: str,
+    db: Session = Depends(get_db),
+    period_days: int = Query(default=30, ge=1, le=365),
+) -> dict:
+    result = get_format_details(db, label, period_days)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Format '{label}' not found")
+    return result
