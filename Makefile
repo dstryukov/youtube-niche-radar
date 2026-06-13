@@ -1,7 +1,7 @@
 .PHONY: up down migrate migrate-upgrade migrate-indexes migrate-all seed api worker frontend test
 
 up:
-	docker compose up --build
+	docker compose up --build -d
 
 down:
 	docker compose down
