@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getOutliers } from '../lib/api';
 import type { Outlier, OutlierFilters } from '../lib/api';
-import { formatNumber, formatViewsPerDay, formatSubscribers } from '../lib/format';
+import { formatNumber, formatViewsPerDay, formatSubscribers, formatCompact } from '../lib/format';
 
 const DEFAULT_FILTERS: OutlierFilters = {
   limit: 25,
@@ -408,8 +408,8 @@ export default function OutlierExplorer() {
                       <span className="sub-row">{formatViewsPerDay(item.views_per_day)}</span>
                     </td>
                     <td>
-                      {item.outlier_multiplier != null ? `x${formatNumber(item.outlier_multiplier, 1)}` : '—'}
-                      <span className="sub-row">{formatViewsPerDay(item.views_per_day)}</span>
+                      <span className="sub-row">Аномальность: <strong>{item.outlier_multiplier != null ? `x${formatNumber(item.outlier_multiplier, 1)}` : '—'}</strong></span>
+                      <span className="sub-row">Score: <strong>{item.outlier_score != null ? formatNumber(item.outlier_score, 2) : '—'}</strong></span>
                     </td>
                     <td>
                       {item.classification ? (
@@ -428,7 +428,29 @@ export default function OutlierExplorer() {
                         <span className="unclassified">Ещё не классифицирован</span>
                       )}
                     </td>
-                    <td><span className="explanation">{item.explanation ?? '—'}</span></td>
+                    <td>
+                      {item.channel_avg_views != null ? (
+                        <div className="explain-block">
+                          <div className="explain-line">Среднее канала: {formatCompact(item.channel_avg_views)}</div>
+                          <div className="explain-line">Медиана канала: {formatCompact(item.channel_median_views)}</div>
+                          <div className="explain-divider" />
+                          {item.ratio_to_avg != null && (
+                            <div className="explain-line explain-highlight">x{formatNumber(item.ratio_to_avg, 1)} к среднему</div>
+                          )}
+                          {item.ratio_to_median != null && (
+                            <div className="explain-line explain-highlight">x{formatNumber(item.ratio_to_median, 1)} к медиане</div>
+                          )}
+                          <div className="explain-divider" />
+                          <div className="explain-line explain-percentile">
+                            {item.percentile_bucket === 'top_10_percent' ? 'Топ 10% канала' :
+                             item.percentile_bucket === 'top_25_percent' ? 'Топ 25% канала' :
+                             item.percentile_bucket === 'normal' ? 'Обычный диапазон' : ''}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="explain-missing">Недостаточно данных по каналу для расчета базовой статистики.</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

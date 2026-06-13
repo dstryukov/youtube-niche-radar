@@ -107,6 +107,11 @@ class OutlierRead(BaseModel):
     classification: AIClassificationRead | None = None
     thumbnail_url: str | None = None
     url: str
+    channel_avg_views: int | None = None
+    channel_median_views: int | None = None
+    ratio_to_avg: float | None = None
+    ratio_to_median: float | None = None
+    percentile_bucket: str | None = None
 
 
 class DashboardSummary(BaseModel):

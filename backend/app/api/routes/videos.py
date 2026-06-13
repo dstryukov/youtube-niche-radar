@@ -10,6 +10,8 @@ from app.db.session import get_db
 from app.models import AIClassification, Channel, Video, VideoScore
 from app.schemas import AIClassificationRead, OutlierRead
 from app.services.ai_classifier import classify_and_save_video
+from app.services.channel_baseline import compute_channel_baseline
+from app.services.outlier_explainer import explain_video
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 
@@ -106,29 +108,65 @@ def list_outliers(
 
     rows = db.execute(stmt).all()
 
-    return [
-        OutlierRead(
-            video_id=video.id,
-            youtube_video_id=video.youtube_video_id,
-            title=video.title,
-            channel_title=channel.title,
-            channel_subscribers=channel.subscriber_count,
-            published_at=video.published_at,
-            latest_views=score.latest_views,
-            views_per_day=score.views_per_day,
-            views_per_sub=score.views_per_sub,
-            channel_baseline_vpd=score.channel_baseline_vpd,
-            outlier_multiplier=score.outlier_multiplier,
-            outlier_score=score.outlier_score,
-            repeatability_score=score.repeatability_score,
-            is_small_channel_breakout=score.is_small_channel_breakout,
-            explanation=score.explanation,
-            classification=AIClassificationRead.model_validate(classification) if classification else None,
-            thumbnail_url=video.thumbnail_url,
-            url=f"https://www.youtube.com/watch?v={video.youtube_video_id}",
+    channel_ids = {channel.id for _, channel, _, _ in rows}
+    baselines: dict[int, dict | None] = {}
+    for cid in channel_ids:
+        if cid not in baselines:
+            baselines[cid] = compute_channel_baseline(db, cid)
+
+    def _explain_for(video, score):
+        baseline = baselines.get(video.channel_id)
+        if not baseline or not score or score.latest_views is None:
+            return None, None, None, None, None
+        avg = baseline.get("avg_views")
+        med = baseline.get("median_views")
+        p75 = baseline.get("p75_views")
+        p90 = baseline.get("p90_views")
+        latest = score.latest_views
+
+        ratio_avg = round(latest / avg, 1) if avg and avg > 0 else None
+        ratio_med = round(latest / med, 1) if med and med > 0 else None
+
+        if p90 is not None and latest >= p90:
+            bucket = "top_10_percent"
+        elif p75 is not None and latest >= p75:
+            bucket = "top_25_percent"
+        else:
+            bucket = "normal"
+
+        return avg, med, ratio_avg, ratio_med, bucket
+
+    result = []
+    for video, channel, score, classification in rows:
+        cav, cmv, r2a, r2m, pb = _explain_for(video, score)
+        result.append(
+            OutlierRead(
+                video_id=video.id,
+                youtube_video_id=video.youtube_video_id,
+                title=video.title,
+                channel_title=channel.title,
+                channel_subscribers=channel.subscriber_count,
+                published_at=video.published_at,
+                latest_views=score.latest_views,
+                views_per_day=score.views_per_day,
+                views_per_sub=score.views_per_sub,
+                channel_baseline_vpd=score.channel_baseline_vpd,
+                outlier_multiplier=score.outlier_multiplier,
+                outlier_score=score.outlier_score,
+                repeatability_score=score.repeatability_score,
+                is_small_channel_breakout=score.is_small_channel_breakout,
+                explanation=score.explanation,
+                classification=AIClassificationRead.model_validate(classification) if classification else None,
+                thumbnail_url=video.thumbnail_url,
+                url=f"https://www.youtube.com/watch?v={video.youtube_video_id}",
+                channel_avg_views=cav,
+                channel_median_views=cmv,
+                ratio_to_avg=r2a,
+                ratio_to_median=r2m,
+                percentile_bucket=pb,
+            )
         )
-        for video, channel, score, classification in rows
-    ]
+    return result
 
 
 @router.post("/{video_id}/classify", response_model=AIClassificationRead)

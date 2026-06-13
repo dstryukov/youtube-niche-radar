@@ -28,6 +28,11 @@ export type Outlier = {
     is_ai_friendly: boolean | null;
     repeatability_score: number | null;
   };
+  channel_avg_views?: number;
+  channel_median_views?: number;
+  ratio_to_avg?: number;
+  ratio_to_median?: number;
+  percentile_bucket?: string;
 };
 
 export type Channel = {
