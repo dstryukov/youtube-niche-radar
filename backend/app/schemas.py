@@ -80,6 +80,7 @@ class AIClassificationRead(BaseModel):
     target_audience: str | None = None
     is_faceless_friendly: bool | None = None
     is_ai_friendly: bool | None = None
+    classifier_version: str | None = None
     repeatability_score: float | None = None
     adaptation_ideas: list[str] | None = None
     confidence: float | None = None

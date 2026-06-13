@@ -1,8 +1,11 @@
-import { getFormatStats } from '../../../lib/api';
+import { getFormatCoverage, getFormatStats } from '../../../lib/api';
 import { formatCompact, formatNumber } from '../../../lib/format';
 
 export default async function FormatsPage() {
-  const stats = await getFormatStats().catch(() => null);
+  const [stats, coverage] = await Promise.all([
+    getFormatStats().catch(() => null),
+    getFormatCoverage().catch(() => null),
+  ]);
 
   return (
     <main className="shell">
@@ -14,6 +17,16 @@ export default async function FormatsPage() {
         </div>
         <a href="/" className="btn btn-secondary btn-sm">← На главную</a>
       </section>
+
+      {coverage && (
+        <section className="panel">
+          <div className="coverage-card">
+            <h2>Покрытие классификации</h2>
+            <div className="coverage-metric">{coverage.coverage_percent}%</div>
+            <div className="coverage-detail">{formatNumber(coverage.classified, 0)} / {formatNumber(coverage.videos_total, 0)} видео</div>
+          </div>
+        </section>
+      )}
 
       <section className="panel">
         <h2>Статистика форматов</h2>

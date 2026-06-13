@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 CLASSIFIER_VERSION = "rule_v1"
 
 FORMAT_RULES: list[tuple[str, list[str], bool, bool]] = [
@@ -17,7 +19,7 @@ FORMAT_RULES: list[tuple[str, list[str], bool, bool]] = [
     ("News", ["breaking news", "just in", "headlines", "news update"], True, True),
     ("Case Study", ["case study", "analysis", "deep dive", "postmortem"], True, True),
     ("Storytime", ["storytime", "my story", "let me tell you"], True, True),
-    ("Top List", ["top 10", "top 5", "top 20", "top 100", "ranking", "ranked", "best", "worst"], True, True),
+    ("Top List", ["top 5", "top 10", "top 20", "ranking", "ranked", "countdown"], True, True),
 ]
 
 
@@ -32,6 +34,15 @@ def classify_video(title: str, description: str | None, channel_name: str | None
                 "is_ai_friendly": ai_friendly,
                 "classifier_version": CLASSIFIER_VERSION,
             }
+
+    # Top List: handle "best X" and "X best" patterns
+    if re.search(r'\b\d+\s*(best|worst)\b|\b(best|worst)\s*\d+\b', text):
+        return {
+            "format_label": "Top List",
+            "is_faceless_friendly": True,
+            "is_ai_friendly": True,
+            "classifier_version": CLASSIFIER_VERSION,
+        }
 
     return {
         "format_label": "Other",

@@ -102,7 +102,7 @@ class TestGetFormatDetails:
         ]
 
         db = MagicMock(spec=Session)
-        db.scalar = MagicMock(side_effect=[fmt, 6, 4])
+        db.scalar = MagicMock(side_effect=[fmt, 6, 4, "rule_v1"])
 
         exec_stats = MagicMock()
         exec_stats.one.return_value = stats_row
@@ -121,6 +121,7 @@ class TestGetFormatDetails:
         assert result["max_views"] == 100000
         assert result["avg_outlier_score"] == 0.75
         assert result["avg_repeatability"] == 0.8
+        assert result["classifier_version"] == "rule_v1"
         assert result["trend"] == 50.0
         assert len(result["top_channels"]) == 2
 

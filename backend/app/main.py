@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.channels import router as channels_router
 from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.maintenance import router as maintenance_router
 from app.api.routes.tasks import router as tasks_router
 from app.api.routes.videos import router as videos_router
 from app.core.config import settings
@@ -23,6 +24,7 @@ app.include_router(channels_router)
 app.include_router(videos_router)
 app.include_router(tasks_router)
 app.include_router(dashboard_router)
+app.include_router(maintenance_router)
 
 
 @app.get("/health")

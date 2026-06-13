@@ -111,3 +111,28 @@ def test_other_fallback_empty_title() -> None:
 def test_classifier_version_saved() -> None:
     result = classify_video("how to code", None, None)
     assert result["classifier_version"] == "rule_v1"
+
+
+def test_top_list_countdown() -> None:
+    result = classify_video("countdown best moments 2024", None, None)
+    assert result["format_label"] == "Top List"
+
+
+def test_top_list_best_with_number() -> None:
+    result = classify_video("best 10 movies of all time", None, None)
+    assert result["format_label"] == "Top List"
+
+
+def test_top_list_number_best() -> None:
+    result = classify_video("10 best android apps", None, None)
+    assert result["format_label"] == "Top List"
+
+
+def test_top_list_negative_does_not_match_best_alone() -> None:
+    result = classify_video("the best way to learn piano", None, None)
+    assert result["format_label"] != "Top List"
+
+
+def test_top_list_negative_does_not_match_worst_alone() -> None:
+    result = classify_video("the worst day of my life storytime", None, None)
+    assert result["format_label"] != "Top List"

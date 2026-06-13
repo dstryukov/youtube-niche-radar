@@ -106,12 +106,20 @@ def get_format_details(db: Session, label: str, period_days: int = 30) -> dict |
         .limit(10)
     ).all()
 
+    latest_version = db.scalar(
+        select(AIClassification.classifier_version)
+        .where(AIClassification.format_label == label, AIClassification.classifier_version.isnot(None))
+        .order_by(AIClassification.created_at.desc())
+        .limit(1)
+    )
+
     return {
         "format_label": fmt.label,
         "description": fmt.description,
         "is_faceless_friendly": fmt.is_faceless_friendly,
         "is_ai_friendly": fmt.is_ai_friendly,
         "repeatability_prior": fmt.repeatability_prior,
+        "classifier_version": latest_version,
         "videos_count": stats.videos_count or 0,
         "avg_views": round(stats.avg_views) if stats.avg_views is not None else None,
         "median_views": round(stats.median_views) if stats.median_views is not None else None,

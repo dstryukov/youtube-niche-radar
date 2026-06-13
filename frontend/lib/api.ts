@@ -26,6 +26,7 @@ export type Outlier = {
     niche_label: string | null;
     is_faceless_friendly: boolean | null;
     is_ai_friendly: boolean | null;
+    classifier_version: string | null;
     repeatability_score: number | null;
     confidence: number | null;
     rationale: string | null;
@@ -297,6 +298,7 @@ export type FormatDetail = {
   is_faceless_friendly: boolean | null;
   is_ai_friendly: boolean | null;
   repeatability_prior: number | null;
+  classifier_version: string | null;
   videos_count: number;
   avg_views: number | null;
   median_views: number | null;
@@ -363,6 +365,38 @@ export async function classifyOutliers(
   if (!res.ok) throw new Error('Не удалось классифицировать аномалии');
   return res.json();
 }
+
+export type FormatCoverage = {
+  videos_total: number;
+  classified: number;
+  other: number;
+  coverage_percent: number;
+};
+
+export async function getFormatCoverage(): Promise<FormatCoverage> {
+  const res = await apiFetch(`${getApiBase()}/analytics/formats/coverage`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить покрытие классификации');
+  return res.json();
+}
+
+export const FORMAT_OPTIONS = [
+  'Reddit Story',
+  'True Crime',
+  'Facts',
+  'Quiz',
+  'Tutorial',
+  'Reaction',
+  'History',
+  'Finance',
+  'AI Story',
+  'Before After',
+  'Motivation',
+  'News',
+  'Case Study',
+  'Storytime',
+  'Top List',
+  'Other',
+];
 
 export async function classifyVideo(videoId: number): Promise<AIClassificationResult> {
   const res = await apiFetch(`${getApiBase()}/videos/${videoId}/classify`, {

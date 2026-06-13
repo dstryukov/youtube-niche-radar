@@ -75,6 +75,16 @@ def test_analytics_format_detail_not_found(client_with_mock_db: TestClient) -> N
     assert response.status_code == 404
 
 
+def test_analytics_formats_coverage(client_with_mock_db: TestClient) -> None:
+    response = client_with_mock_db.get("/analytics/formats/coverage")
+    assert response.status_code == 200
+    data = response.json()
+    assert "videos_total" in data
+    assert "classified" in data
+    assert "other" in data
+    assert "coverage_percent" in data
+
+
 def test_analytics_format_detail_found(client_with_mock_db: TestClient, mock_db: MagicMock) -> None:
     from app.models import Format
     mock_format = MagicMock(spec=Format)
@@ -84,7 +94,7 @@ def test_analytics_format_detail_found(client_with_mock_db: TestClient, mock_db:
     mock_format.is_ai_friendly = True
     mock_format.repeatability_prior = 0.8
 
-    mock_db.scalar = MagicMock(side_effect=[mock_format, 6, 4])
+    mock_db.scalar = MagicMock(side_effect=[mock_format, 6, 4, None])
 
     stats_row = MagicMock(
         videos_count=10,
@@ -105,3 +115,4 @@ def test_analytics_format_detail_found(client_with_mock_db: TestClient, mock_db:
     data = response.json()
     assert data["format_label"] == "test_format"
     assert data["videos_count"] == 10
+    assert "classifier_version" in data

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import AIClassification, Format, Niche, Video
+from app.services.format_classifier import CLASSIFIER_VERSION as RULE_CLASSIFIER_VERSION
 from app.services.llm_client import get_llm_client
 from app.services.metrics import calculate_video_score
 
@@ -233,6 +234,7 @@ def save_classification(
     row.target_audience = result.target_audience
     row.is_faceless_friendly = result.is_faceless_friendly
     row.is_ai_friendly = result.is_ai_friendly
+    row.classifier_version = RULE_CLASSIFIER_VERSION
     row.repeatability_score = result.repeatability_score
     row.adaptation_ideas = result.adaptation_ideas
     row.confidence = result.confidence

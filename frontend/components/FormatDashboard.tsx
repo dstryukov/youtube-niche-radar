@@ -154,6 +154,9 @@ export default function FormatDashboard() {
             </div>
             <div className="modal-body">
               {detail.description && <p className="format-description">{detail.description}</p>}
+              {detail.classifier_version && (
+                <span className="badge badge-sm badge-gray" style={{ marginBottom: '12px' }}>{detail.classifier_version}</span>
+              )}
 
               <div className="detail-grid">
                 <div className="detail-card">

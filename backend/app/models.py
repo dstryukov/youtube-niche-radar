@@ -171,6 +171,7 @@ class AIClassification(Base):
     target_audience: Mapped[str | None] = mapped_column(String(255))
     is_faceless_friendly: Mapped[bool | None] = mapped_column(Boolean, index=True)
     is_ai_friendly: Mapped[bool | None] = mapped_column(Boolean, index=True)
+    classifier_version: Mapped[str | None] = mapped_column(String(64), index=True)
     repeatability_score: Mapped[float | None] = mapped_column(Float, index=True)
     adaptation_ideas: Mapped[list[str] | None] = mapped_column(JSONB)
     confidence: Mapped[float | None] = mapped_column(Float)

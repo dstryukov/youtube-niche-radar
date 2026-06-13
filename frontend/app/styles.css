@@ -178,6 +178,8 @@ h1 { font-size: 36px; line-height: 1.1; margin: 0 0 6px; }
 .badge-sm { font-size: 10px; padding: 1px 6px; }
 .format-cell { display: flex; flex-direction: column; gap: 4px; }
 .format-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.clickable-format { cursor: pointer; transition: opacity .12s; }
+.clickable-format:hover { opacity: .7; }
 
 /* Analytics table */
 .analytics-table th, .analytics-table td { padding: 12px 20px; }
@@ -190,6 +192,12 @@ h1 { font-size: 36px; line-height: 1.1; margin: 0 0 6px; }
 .explain-highlight { font-weight: 600; color: #101828; }
 .explain-percentile { font-weight: 600; color: #6941c6; }
 .explain-missing { color: #98a2b3; font-style: italic; font-size: 12px; }
+
+/* Coverage card */
+.coverage-card { padding: 24px 20px; text-align: center; }
+.coverage-card h2 { font-size: 16px; margin: 0 0 12px; border-bottom: none; padding: 0; }
+.coverage-metric { font-size: 48px; font-weight: 700; color: #101828; line-height: 1; }
+.coverage-detail { font-size: 14px; color: #667085; margin-top: 8px; }
 
 @media (max-width: 900px) {
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getOutliers, classifyOutliers, classifyVideo } from '../lib/api';
+import { getOutliers, classifyOutliers, classifyVideo, FORMAT_OPTIONS } from '../lib/api';
 import type { Outlier, OutlierFilters } from '../lib/api';
 import { formatNumber, formatViewsPerDay, formatSubscribers, formatCompact } from '../lib/format';
 
@@ -322,13 +322,16 @@ export default function OutlierExplorer() {
           </div>
           <div className="filter-item">
             <label className="filter-label">Формат</label>
-            <input
-              className="input"
-              type="text"
-              placeholder="Например: образовательный"
+            <select
+              className="select"
               value={formatLabel}
               onChange={e => setFormatLabel(e.target.value)}
-            />
+            >
+              <option value="">Все форматы</option>
+              {FORMAT_OPTIONS.map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
           </div>
           <div className="filter-item">
             <label className="filter-label">Ниша</label>
@@ -458,7 +461,18 @@ export default function OutlierExplorer() {
                     <td>
                       {item.classification && item.classification.format_label ? (
                         <div className="format-cell">
-                          <span className="badge badge-format">{item.classification.format_label}</span>
+                          <span
+                            className="badge badge-format clickable-format"
+                            onClick={() => {
+                              setFormatLabel(item.classification!.format_label!);
+                              const f = buildFilters();
+                              f.formatLabel = item.classification!.format_label!;
+                              fetchData(f);
+                            }}
+                            title="Нажмите, чтобы отфильтровать по этому формату"
+                          >
+                            {item.classification.format_label}
+                          </span>
                           <div className="format-badges">
                             {item.classification.model === 'stub' ? (
                               <span className="badge badge-gray badge-sm" title="Правила (rule-based)">
